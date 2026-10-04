@@ -18,6 +18,6 @@ Sistema de gestión para bar con 3 sedes: Galerías, Zona T y La 85.
 
 ## Equipo
 
-- Nahomi Lozada - Backend / Admin
-- Thais Duran - Frontend / Mesera
-- Julian Velasco - Backend / Cajero
+- Nahomi Lozada -  / Admin
+- Thais Duran -  / Mesera
+- Julian Velasco - / Cajero
