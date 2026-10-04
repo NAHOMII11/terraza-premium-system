@@ -17,6 +17,9 @@ public class SedeRequest {
     @Size(max = 255, message = "La dirección es demasiado larga")
     private String direccion;
 
+    @Size(max = 100, message = "La ciudad es demasiado larga")
+    private String ciudad;
+
     @Pattern(regexp = "^$|^[0-9+()\\-\\s]{7,30}$", message = "El teléfono no es válido")
     private String telefono;
 }

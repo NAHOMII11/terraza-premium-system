@@ -2,6 +2,8 @@ package com.terraza.backend.config;
 
 import com.terraza.backend.dto.ApiError;
 import com.terraza.backend.exception.BusinessException;
+import com.terraza.backend.service.AuditoriaService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -28,7 +31,10 @@ import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final AuditoriaService auditoriaService;
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiError> handleBusiness(BusinessException ex, WebRequest request) {
@@ -47,6 +53,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(apiError(HttpStatus.UNAUTHORIZED, "Usuario inactivo", request, null));
     }
 
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ApiError> handleLocked(LockedException ex, WebRequest request) {
+        log.warn("Intento de acceso con cuenta bloqueada");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(apiError(HttpStatus.UNAUTHORIZED, "Cuenta bloqueada temporalmente", request, null));
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, WebRequest request) {
         log.warn("Autenticación rechazada");
@@ -56,6 +69,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        auditar("ACCESO_DENEGADO", "Acceso denegado");
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(apiError(HttpStatus.FORBIDDEN, "No tiene permisos para esta operación", request, null));
     }
@@ -73,6 +87,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ApiError> handleDataAccess(DataAccessException ex, WebRequest request) {
         log.error("Error de acceso a datos", ex);
+        auditar("ERROR_INESPERADO", "Error al acceder a los datos");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(apiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error al acceder a los datos", request, null));
     }
@@ -80,8 +95,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, WebRequest request) {
         log.error("Error no controlado", ex);
+        auditar("ERROR_INESPERADO", "Error interno del servidor");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(apiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servidor", request, null));
+    }
+
+    private void auditar(String operacion, String detalle) {
+        try {
+            auditoriaService.registrar(operacion, detalle);
+        } catch (RuntimeException ex) {
+            log.error("No se pudo registrar la auditoría", ex);
+        }
     }
 
     @Override

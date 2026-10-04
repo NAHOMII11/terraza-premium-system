@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,12 +30,14 @@ public class PedidoController {
     private final PedidoService pedidoService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MESERO')")
     public ResponseEntity<Pedido> crear(@Valid @RequestBody PedidoRequest request, Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(pedidoService.crear(request, principal(authentication)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MESERO')")
     public Pedido actualizar(
             @PathVariable Long id,
             @Valid @RequestBody PedidoRequest request,
@@ -43,6 +46,7 @@ public class PedidoController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO', 'MESERO')")
     public List<Pedido> listar(@RequestParam Long sedeId, Authentication authentication) {
         return pedidoService.listarActivos(sedeId, principal(authentication));
     }

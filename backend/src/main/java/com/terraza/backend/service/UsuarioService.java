@@ -48,7 +48,7 @@ public class UsuarioService {
                 passwordEncoder.encode(request.getPassword()),
                 request.getRolId(),
                 request.getSedeId());
-        auditoriaService.registrar("CREAR_USUARIO", "usuarios", id, "Usuario creado: " + email);
+        auditoriaService.registrar("CREAR_USUARIO", "Usuario creado: " + email);
         return obtener(id);
     }
 
@@ -68,7 +68,7 @@ public class UsuarioService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             usuarioRepository.actualizarPassword(id, passwordEncoder.encode(request.getPassword()));
         }
-        auditoriaService.registrar("EDITAR_USUARIO", "usuarios", id, "Usuario actualizado: " + email);
+        auditoriaService.registrar("EDITAR_USUARIO", "Usuario actualizado: " + email);
         return obtener(id);
     }
 
@@ -82,9 +82,7 @@ public class UsuarioService {
         usuarioRepository.actualizarActivo(id, activo);
         auditoriaService.registrar(
                 "CAMBIAR_ESTADO_USUARIO",
-                "usuarios",
-                id,
-                activo ? "Usuario activado" : "Usuario desactivado");
+                activo ? "Usuario activado: " + id : "Usuario desactivado: " + id);
         usuario.setActivo(activo);
         return UsuarioDTO.from(usuarioRepository.findById(id).orElseThrow());
     }

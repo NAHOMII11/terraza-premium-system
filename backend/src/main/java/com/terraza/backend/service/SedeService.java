@@ -27,8 +27,12 @@ public class SedeService {
         if (sedeRepository.existeNombre(nombre)) {
             throw new BusinessException(HttpStatus.CONFLICT, "Ya existe una sede con ese nombre");
         }
-        Long id = sedeRepository.insertar(nombre, limpiar(request.getDireccion()), limpiar(request.getTelefono()));
-        auditoriaService.registrar("CREAR_SEDE", "sedes", id, "Sede creada: " + nombre);
+        Long id = sedeRepository.insertar(
+                nombre,
+                limpiar(request.getDireccion()),
+                limpiar(request.getTelefono()),
+                ciudad(request));
+        auditoriaService.registrar("CREAR_SEDE", "Sede creada: " + nombre);
         return sedeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
     }
@@ -42,10 +46,20 @@ public class SedeService {
         if (sedeRepository.existeNombreEnOtra(nombre, id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "Ya existe una sede con ese nombre");
         }
-        sedeRepository.actualizar(id, nombre, limpiar(request.getDireccion()), limpiar(request.getTelefono()));
-        auditoriaService.registrar("EDITAR_SEDE", "sedes", id, "Sede actualizada: " + nombre);
+        sedeRepository.actualizar(
+                id,
+                nombre,
+                limpiar(request.getDireccion()),
+                limpiar(request.getTelefono()),
+                ciudad(request));
+        auditoriaService.registrar("EDITAR_SEDE", "Sede actualizada: " + nombre);
         return sedeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+    }
+
+    private String ciudad(SedeRequest request) {
+        String ciudad = limpiar(request.getCiudad());
+        return ciudad == null ? "Bogotá" : ciudad;
     }
 
     private String limpiar(String valor) {

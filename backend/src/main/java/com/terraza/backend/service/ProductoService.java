@@ -25,18 +25,24 @@ public class ProductoService {
 
     @Transactional
     public Producto crear(ProductoRequest request) {
+        String codigo = request.getCodigo().trim();
         String nombre = request.getNombre().trim();
         validarRelaciones(request);
+        if (productoRepository.existeCodigo(codigo)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un producto con ese código");
+        }
         if (productoRepository.existeNombreYTipo(nombre, request.getTipoProductoId())) {
             throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un producto con ese nombre y tipo");
         }
         Long id = productoRepository.insertar(
+                codigo,
                 nombre,
                 limpiar(request.getDescripcion()),
-                request.getPrecio(),
+                request.getValorCompra(),
+                request.getValorVenta(),
                 request.getTipoProductoId(),
                 request.getProveedorId());
-        auditoriaService.registrar("CREAR_PRODUCTO", "productos", id, "Producto creado: " + nombre);
+        auditoriaService.registrar("CREAR_PRODUCTO", "Producto creado: " + codigo);
         return obtener(id);
     }
 
@@ -45,19 +51,25 @@ public class ProductoService {
         if (productoRepository.findById(id).isEmpty()) {
             throw new BusinessException(HttpStatus.NOT_FOUND, "Producto no encontrado");
         }
+        String codigo = request.getCodigo().trim();
         String nombre = request.getNombre().trim();
         validarRelaciones(request);
+        if (productoRepository.existeCodigoEnOtro(codigo, id)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un producto con ese código");
+        }
         if (productoRepository.existeNombreYTipoEnOtro(nombre, request.getTipoProductoId(), id)) {
             throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un producto con ese nombre y tipo");
         }
         productoRepository.actualizar(
                 id,
+                codigo,
                 nombre,
                 limpiar(request.getDescripcion()),
-                request.getPrecio(),
+                request.getValorCompra(),
+                request.getValorVenta(),
                 request.getTipoProductoId(),
                 request.getProveedorId());
-        auditoriaService.registrar("EDITAR_PRODUCTO", "productos", id, "Producto actualizado: " + nombre);
+        auditoriaService.registrar("EDITAR_PRODUCTO", "Producto actualizado: " + codigo);
         return obtener(id);
     }
 
@@ -67,7 +79,7 @@ public class ProductoService {
             throw new BusinessException(HttpStatus.NOT_FOUND, "Producto no encontrado");
         }
         productoRepository.desactivar(id);
-        auditoriaService.registrar("DESACTIVAR_PRODUCTO", "productos", id, "Producto desactivado");
+        auditoriaService.registrar("DESACTIVAR_PRODUCTO", "Producto desactivado: " + id);
     }
 
     private Producto obtener(Long id) {

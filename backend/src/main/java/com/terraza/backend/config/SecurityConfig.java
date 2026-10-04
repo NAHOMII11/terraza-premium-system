@@ -1,8 +1,10 @@
 package com.terraza.backend.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+import com.terraza.backend.service.AuditoriaService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AccountExpiredException;
@@ -28,10 +30,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuditoriaService auditoriaService) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -57,8 +60,12 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
                                 writeJson(response, 401, "Unauthorized", "Autenticación requerida"))
-                        .accessDeniedHandler((request, response, accessDeniedException) ->
-                                writeJson(response, 403, "Forbidden", "No tiene permisos para esta operación")))
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            auditoriaService.registrar(
+                                    "ACCESO_DENEGADO",
+                                    "Sin permiso para " + request.getMethod() + " " + request.getRequestURI());
+                            writeJson(response, 403, "Forbidden", "No tiene permisos para esta operación");
+                        }))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable);
@@ -67,7 +74,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
@@ -87,7 +94,7 @@ public class SecurityConfig {
             throw new DisabledException("Usuario inactivo");
         }
         if (!user.isAccountNonLocked()) {
-            throw new LockedException("La cuenta está bloqueada");
+            throw new LockedException("Cuenta bloqueada temporalmente");
         }
         if (!user.isAccountNonExpired()) {
             throw new AccountExpiredException("La cuenta está vencida");

@@ -11,10 +11,11 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-# Variables de entorno
+# Variables de entorno y credenciales locales (OWASP A05)
 .env
 .env.local
 *.env
+backend/src/main/resources/application.properties
 
 # IDEs
 .idea/

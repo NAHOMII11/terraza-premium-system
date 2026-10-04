@@ -15,6 +15,8 @@ public class Sede {
     private String nombre;
     private String direccion;
     private String telefono;
+    private String ciudad;
     private Boolean activo;
     private LocalDateTime creadoEn;
+    private LocalDateTime actualizadoEn;
 }

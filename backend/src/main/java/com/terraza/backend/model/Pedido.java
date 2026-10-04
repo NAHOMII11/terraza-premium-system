@@ -19,11 +19,14 @@ public class Pedido {
     private Long id;
     private Long sedeId;
     private Long mesaId;
-    private Long usuarioId;
-    private String usuarioNombre;
+    private Long meseroId;
+    private String meseroNombre;
+    private Long cajeroId;
+    private String cajeroNombre;
     private String estado;
     private BigDecimal total;
-    private LocalDateTime creadoEn;
+    private LocalDateTime fechaApertura;
+    private LocalDateTime fechaCierre;
     private LocalDateTime actualizadoEn;
     private List<DetallePedido> detalles = new ArrayList<>();
 }

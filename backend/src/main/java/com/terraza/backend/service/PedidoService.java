@@ -46,7 +46,7 @@ public class PedidoService {
                 principal.getUsuario().getId(),
                 total(detalles));
         pedidoRepository.insertarDetalles(id, detalles);
-        auditoriaService.registrar("CREAR_PEDIDO", "pedidos", id, "Pedido creado");
+        auditoriaService.registrar("CREAR_PEDIDO", "Pedido creado: " + id);
         return obtener(id);
     }
 
@@ -69,7 +69,7 @@ public class PedidoService {
         if (filas == 0) {
             throw new BusinessException(HttpStatus.CONFLICT, "El pedido ya no está abierto");
         }
-        auditoriaService.registrar("EDITAR_PEDIDO", "pedidos", id, "Pedido abierto actualizado");
+        auditoriaService.registrar("EDITAR_PEDIDO", "Pedido abierto actualizado: " + id);
         return obtener(id);
     }
 
@@ -135,8 +135,8 @@ public class PedidoService {
             detalle.setProductoId(producto.getId());
             detalle.setProductoNombre(producto.getNombre());
             detalle.setCantidad(entry.getValue());
-            detalle.setPrecioUnitario(producto.getPrecio());
-            detalle.setSubtotal(producto.getPrecio()
+            detalle.setPrecioUnitario(producto.getValorVenta());
+            detalle.setSubtotal(producto.getValorVenta()
                     .multiply(BigDecimal.valueOf(entry.getValue()))
                     .setScale(2, RoundingMode.HALF_UP));
             detalles.add(detalle);

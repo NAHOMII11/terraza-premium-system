@@ -10,10 +10,10 @@ public class AuditoriaRepository {
 
     private final JdbcTemplate jdbc;
 
-    public void insertar(Long usuarioId, String accion, String entidad, Long entidadId, String detalle) {
+    public void insertar(Long usuarioId, String operacion, String detalle, String ip, Long sedeId) {
         jdbc.update("""
-                INSERT INTO auditoria (usuario_id, accion, entidad, entidad_id, detalle)
+                INSERT INTO auditoria (usuario_id, operacion, detalle, ip, sede_id)
                 VALUES (?, ?, ?, ?, ?)
-                """, usuarioId, accion, entidad, entidadId, detalle);
+                """, usuarioId, operacion, detalle, ip, sedeId);
     }
 }
