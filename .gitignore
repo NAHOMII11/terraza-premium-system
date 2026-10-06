@@ -25,3 +25,7 @@ backend/src/main/resources/application.properties
 # Sistema operativo
 .DS_Store
 Thumbs.db
+# Ignorar basura de la raíz
+/node_modules
+/package.json
+/package-lock.json
