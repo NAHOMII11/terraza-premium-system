@@ -29,12 +29,12 @@ export default function Login() {
         navigate('/cajero/dashboard');
       } else {
         localStorage.clear();
-        setError('Rol no reconocido: ' + data.rol);
+        setError('Unknown role: ' + data.rol);
         setLoading(false);
         return;
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Credenciales incorrectas');
+      setError(err.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -75,14 +75,14 @@ export default function Login() {
 
         <div className="relative z-10 text-white">
           <h1 className="font-display text-5xl leading-tight mb-4">
-            Cócteles,<br />
+            Cocktails,<br />
             <span style={{ color: 'var(--bar-gold)' }}>
-              buena música y mejor servicio.
+              good music and better service.
             </span>
           </h1>
           <p className="text-white/60 text-sm max-w-md leading-relaxed">
-            Sistema interno del equipo de sala. Toma pedidos, consulta
-            disponibilidad y controla las mesas en tiempo real.
+            Internal system for the floor team. Take orders, check availability
+            and control tables in real time.
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default function Login() {
             className="w-2 h-2 rounded-full animate-pulse"
             style={{ background: 'var(--bar-gold)' }}
           />
-          Bar operativo · Sede Galerías
+          Bar active · Galerías branch
         </div>
       </aside>
 
@@ -123,16 +123,16 @@ export default function Login() {
               className="text-xs uppercase tracking-widest text-gray-500 mb-2"
               style={{ letterSpacing: '0.15em' }}
             >
-              Acceso personal
+              Staff access
             </p>
             <h2
               className="font-display text-4xl"
               style={{ color: 'var(--bar-dark)' }}
             >
-              Bienvenido
+              Welcome back
             </h2>
             <p className="text-gray-500 text-sm mt-2">
-              Ingresa tus credenciales para continuar.
+              Sign in with your credentials to continue.
             </p>
           </header>
 
@@ -156,7 +156,7 @@ export default function Login() {
                 className="block text-xs font-medium uppercase tracking-wider text-gray-600 mb-2"
                 style={{ letterSpacing: '0.1em' }}
               >
-                Correo electrónico
+                Email address
               </label>
               <input
                 id="email"
@@ -165,7 +165,7 @@ export default function Login() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nombre@terrazapremium.com"
+                placeholder="name@terrazapremium.com"
                 className="w-full px-4 py-3 rounded-lg border bg-white
                            focus:outline-none focus:ring-2 transition
                            placeholder:text-gray-400"
@@ -180,13 +180,13 @@ export default function Login() {
                   className="block text-xs font-medium uppercase tracking-wider text-gray-600"
                   style={{ letterSpacing: '0.1em' }}
                 >
-                  Contraseña
+                  Password
                 </label>
                 <a
                   href="#"
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
-                  ¿Olvidaste tu contraseña?
+                  Forgot password?
                 </a>
               </div>
               <input
@@ -212,7 +212,7 @@ export default function Login() {
                          hover:translate-y-[-1px] active:translate-y-0"
               style={{ background: 'var(--bar-dark)' }}
             >
-              {loading ? 'Verificando...' : 'Iniciar sesión'}
+              {loading ? 'Verifying...' : 'Sign in'}
             </button>
           </form>
 
@@ -221,7 +221,7 @@ export default function Login() {
             style={{ borderColor: 'rgba(0,0,0,0.1)' }}
           >
             <span>© 2026 Terraza Premium</span>
-            <span>Sede Galerías</span>
+            <span>Galerías Branch</span>
           </footer>
         </div>
       </main>

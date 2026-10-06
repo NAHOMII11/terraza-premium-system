@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/api';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
-interface Usuario {
+interface User {
   id: number;
   nombre: string;
   email: string;
@@ -11,29 +11,29 @@ interface Usuario {
   sede: string;
 }
 
-interface Sede {
+interface Branch {
   id: number;
   nombre: string;
   direccion: string;
   ciudad: string;
 }
 
-interface Producto {
+interface Product {
   id: number;
   nombre: string;
   valorVenta: number;
   precio: number;
 }
 
-type Tab = 'usuarios' | 'sedes' | 'productos';
+type Tab = 'users' | 'branches' | 'products';
 
 export default function Dashboard() {
   useInactivityLogout();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('usuarios');
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [sedes, setSedes] = useState<Sede[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [tab, setTab] = useState<Tab>('users');
+  const [users, setUsers] = useState<User[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,16 +42,16 @@ export default function Dashboard() {
       api.get('/api/branches').catch(() => ({ data: [] })),
       api.get('/api/products').catch(() => ({ data: [] })),
     ])
-      .then(([rU, rS, rP]) => {
-        setUsuarios(Array.isArray(rU.data) ? rU.data : []);
-        setSedes(Array.isArray(rS.data) ? rS.data : []);
-        setProductos(Array.isArray(rP.data) ? rP.data : []);
+      .then(([rU, rB, rP]) => {
+        setUsers(Array.isArray(rU.data) ? rU.data : []);
+        setBranches(Array.isArray(rB.data) ? rB.data : []);
+        setProducts(Array.isArray(rP.data) ? rP.data : []);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const cerrarSesion = async () => {
-    if (!confirm('¿Cerrar sesión?')) return;
+  const logout = async () => {
+    if (!confirm('Close session?')) return;
     try {
       await api.post('/api/auth/logout');
     } catch {}
@@ -84,15 +84,15 @@ export default function Dashboard() {
             <div className="hidden md:flex flex-col items-end">
               <p className="text-white/70 text-xs">{localStorage.getItem('email')}</p>
               <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--bar-gold)' }}>
-                Administrador
+                Administrator
               </p>
             </div>
             <button
-              onClick={cerrarSesion}
+              onClick={logout}
               className="text-white/60 hover:text-white text-sm transition-colors border rounded-md px-3 py-1.5"
               style={{ borderColor: 'rgba(212,162,76,0.3)' }}
             >
-              Salir
+              Sign out
             </button>
           </div>
         </div>
@@ -102,18 +102,18 @@ export default function Dashboard() {
         <header className="mb-8">
           <p className="text-xs uppercase tracking-widest text-gray-500 mb-2"
              style={{ letterSpacing: '0.15em' }}>
-            Panel de administración
+            Admin panel
           </p>
           <h1 className="font-display text-4xl" style={{ color: 'var(--bar-dark)' }}>
-            Bienvenido, Administrador
+            Welcome, Administrator
           </h1>
         </header>
 
         <div className="flex gap-2 mb-6">
           {([
-            { key: 'usuarios', label: `Usuarios (${usuarios.length})` },
-            { key: 'sedes', label: `Sedes (${sedes.length})` },
-            { key: 'productos', label: `Productos (${productos.length})` },
+            { key: 'users', label: `Users (${users.length})` },
+            { key: 'branches', label: `Branches (${branches.length})` },
+            { key: 'products', label: `Products (${products.length})` },
           ] as { key: Tab; label: string }[]).map((t) => (
             <button
               key={t.key}
@@ -131,22 +131,22 @@ export default function Dashboard() {
         </div>
 
         {loading ? (
-          <p className="text-gray-400">Cargando datos...</p>
+          <p className="text-gray-400">Loading data...</p>
         ) : (
           <div className="bg-white rounded-xl border overflow-hidden"
                style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
-            {tab === 'usuarios' && (
+            {tab === 'users' && (
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Nombre</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Name</th>
                     <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Email</th>
-                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Rol</th>
-                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Sede</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Role</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Branch</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usuarios.map((u) => (
+                  {users.map((u) => (
                     <tr key={u.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                       <td className="px-6 py-4 font-medium">{u.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
@@ -163,39 +163,39 @@ export default function Dashboard() {
               </table>
             )}
 
-            {tab === 'sedes' && (
+            {tab === 'branches' && (
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Nombre</th>
-                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Dirección</th>
-                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Ciudad</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Name</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Address</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">City</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sedes.map((s) => (
-                    <tr key={s.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
-                      <td className="px-6 py-4 font-medium">{s.nombre}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{s.direccion}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{s.ciudad}</td>
+                  {branches.map((b) => (
+                    <tr key={b.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                      <td className="px-6 py-4 font-medium">{b.nombre}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{b.direccion}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{b.ciudad}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
 
-            {tab === 'productos' && (
+            {tab === 'products' && (
               <div className="max-h-96 overflow-y-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
                       <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">ID</th>
-                      <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Nombre</th>
-                      <th className="text-right px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Precio</th>
+                      <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Name</th>
+                      <th className="text-right px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Price</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {productos.map((p) => (
+                    {products.map((p) => (
                       <tr key={p.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                         <td className="px-6 py-3 text-sm text-gray-500">#{p.id}</td>
                         <td className="px-6 py-3">{p.nombre}</td>

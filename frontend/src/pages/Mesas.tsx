@@ -12,7 +12,7 @@ export default function Mesas() {
   const navigate = useNavigate();
   const sedeId = localStorage.getItem('sedeId') || '1';
 
-  const cargarMesas = () => {
+  const loadTables = () => {
     setLoading(true);
     api
       .get(`/api/tables?sedeId=${sedeId}`)
@@ -22,21 +22,21 @@ export default function Mesas() {
   };
 
   useEffect(() => {
-    cargarMesas();
+    loadTables();
   }, [sedeId]);
 
-  const esDisponible = (estado: string) =>
+  const isAvailable = (estado: string) =>
     estado === 'DISPONIBLE' || estado === 'LIBRE';
-  const esOcupada = (estado: string) => estado === 'OCUPADA';
+  const isOccupied = (estado: string) => estado === 'OCUPADA';
 
-  const estadoConfig = (estado: string) => {
-    if (esOcupada(estado)) {
+  const statusConfig = (estado: string) => {
+    if (isOccupied(estado)) {
       return {
         bg: '#ffebee',
         border: '#ef9a9a',
         text: '#b71c1c',
         dot: '#ef5350',
-        label: 'Ocupada',
+        label: 'Occupied',
       };
     }
     return {
@@ -44,34 +44,26 @@ export default function Mesas() {
       border: '#a5d6a7',
       text: '#1b5e20',
       dot: '#4caf50',
-      label: 'Disponible',
+      label: 'Available',
     };
   };
 
-  const libres = mesas.filter((m) => esDisponible(m.estado)).length;
-  const ocupadas = mesas.filter((m) => esOcupada(m.estado)).length;
+  const available = mesas.filter((m) => isAvailable(m.estado)).length;
+  const occupied = mesas.filter((m) => isOccupied(m.estado)).length;
 
-  const liberarMesa = async (mesaId: number, numero: number) => {
-    if (!confirm(`¿Liberar la mesa ${numero}? Quedará disponible.`)) return;
+  const releaseTable = async (mesaId: number, numero: number) => {
+    if (!confirm(`Release table ${numero}? It will become available.`)) return;
 
     try {
-      const { data: pedidos } = await api.get(`/api/orders?sedeId=${sedeId}`);
-      const pedidoActivo = pedidos.find(
-        (p: any) =>
-          p.mesaId === mesaId &&
-          p.estado !== 'CANCELADO' &&
-          p.estado !== 'CERRADO'
+      await api.put(`/api/tables/${mesaId}`, { estado: 'DISPONIBLE' });
+      loadTables();
+    } catch (err: any) {
+      console.error('Error releasing table:', err);
+      alert(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          'Error releasing table'
       );
-
-      if (pedidoActivo) {
-        await api.put(`/api/orders/${pedidoActivo.id}`, { estado: 'CERRADO' });
-      } else {
-        await api.put(`/api/tables/${mesaId}`, { estado: 'DISPONIBLE' });
-      }
-
-      cargarMesas();
-    } catch {
-      alert('Error al liberar la mesa');
     }
   };
 
@@ -86,22 +78,22 @@ export default function Mesas() {
               className="text-xs uppercase tracking-widest text-gray-500 mb-2"
               style={{ letterSpacing: '0.15em' }}
             >
-              Salón · Sede {sedeId}
+              Floor · Branch {sedeId}
             </p>
             <h1
               className="font-display text-4xl"
               style={{ color: 'var(--bar-dark)' }}
             >
-              Estado de mesas
+              Table status
             </h1>
           </div>
           <div className="flex gap-6">
             <div>
               <p className="text-xs uppercase tracking-widest text-gray-500">
-                Disponibles
+                Available
               </p>
               <p className="font-display text-3xl" style={{ color: '#1b5e20' }}>
-                {libres}
+                {available}
               </p>
             </div>
             <div
@@ -109,33 +101,30 @@ export default function Mesas() {
               style={{ borderColor: 'rgba(0,0,0,0.1)' }}
             >
               <p className="text-xs uppercase tracking-widest text-gray-500">
-                Ocupadas
+                Occupied
               </p>
               <p className="font-display text-3xl" style={{ color: '#b71c1c' }}>
-                {ocupadas}
+                {occupied}
               </p>
             </div>
           </div>
         </header>
 
         {loading ? (
-          <p className="text-gray-400">Cargando mesas...</p>
+          <p className="text-gray-400">Loading tables...</p>
         ) : mesas.length === 0 ? (
           <div
             className="text-center py-20 border-2 border-dashed rounded-xl"
             style={{ borderColor: 'rgba(0,0,0,0.1)' }}
           >
-            <p className="text-gray-400">
-              No hay mesas registradas en esta sede.
-            </p>
+            <p className="text-gray-400">No tables registered at this branch.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {mesas.map((mesa, index) => {
-              const cfg = estadoConfig(mesa.estado);
-              const ocupada = esOcupada(mesa.estado);
-              // Número visible: usa el numero real de la BD, o el index+1 como fallback
-              const numeroVisible = mesa.numero || index + 1;
+              const cfg = statusConfig(mesa.estado);
+              const occ = isOccupied(mesa.estado);
+              const visibleNumber = mesa.numero || index + 1;
               return (
                 <div
                   key={mesa.id}
@@ -144,9 +133,7 @@ export default function Mesas() {
                 >
                   <button
                     onClick={() =>
-                      navigate(
-                        `/mesera/pedido/${mesa.id}?numero=${numeroVisible}`
-                      )
+                      navigate(`/mesera/pedido/${mesa.id}?numero=${visibleNumber}`)
                     }
                     className="w-full p-6 text-left"
                   >
@@ -155,7 +142,7 @@ export default function Mesas() {
                         className="text-xs uppercase tracking-widest font-medium"
                         style={{ color: cfg.text, letterSpacing: '0.1em' }}
                       >
-                        Mesa
+                        Table
                       </span>
                       <span
                         className="w-2 h-2 rounded-full"
@@ -166,7 +153,7 @@ export default function Mesas() {
                       className="font-display text-4xl mb-1"
                       style={{ color: cfg.text }}
                     >
-                      {String(numeroVisible).padStart(2, '0')}
+                      {String(visibleNumber).padStart(2, '0')}
                     </p>
                     <p
                       className="text-xs font-medium"
@@ -176,11 +163,11 @@ export default function Mesas() {
                     </p>
                   </button>
 
-                  {ocupada ? (
+                  {occ ? (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        liberarMesa(mesa.id, numeroVisible);
+                        releaseTable(mesa.id, visibleNumber);
                       }}
                       className="w-full py-2 text-[10px] uppercase tracking-widest font-semibold border-t transition-colors hover:bg-red-100"
                       style={{
@@ -190,14 +177,14 @@ export default function Mesas() {
                         letterSpacing: '0.15em',
                       }}
                     >
-                      Liberar mesa
+                      Release table
                     </button>
                   ) : (
                     <div
                       className="px-6 py-3 border-t flex items-center justify-between text-[10px] uppercase tracking-widest opacity-60"
                       style={{ borderColor: cfg.border, color: cfg.text }}
                     >
-                      <span>Tomar pedido</span>
+                      <span>Take order</span>
                       <span>→</span>
                     </div>
                   )}

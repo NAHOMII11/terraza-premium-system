@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { Producto } from '../types';
 
-interface ItemCarrito {
+interface CartItem {
   productoId: number;
   nombre: string;
   precio: number;
@@ -16,14 +16,14 @@ export default function TomarPedido() {
   useInactivityLogout();
   const { mesaId } = useParams();
   const [searchParams] = useSearchParams();
-  const numeroMesa = searchParams.get('numero') || mesaId;
+  const tableNumber = searchParams.get('numero') || mesaId;
   const navigate = useNavigate();
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [guardando, setGuardando] = useState(false);
-  const [busqueda, setBusqueda] = useState('');
-  const [mesaOcupada, setMesaOcupada] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [tableOccupied, setTableOccupied] = useState(false);
   const sedeId = Number(localStorage.getItem('sedeId') || 1);
 
   useEffect(() => {
@@ -37,15 +37,15 @@ export default function TomarPedido() {
       .get(`/api/tables?sedeId=${sedeId}`)
       .then((r) => {
         const mesa = r.data.find((m: any) => m.id === Number(mesaId));
-        if (mesa && mesa.estado === 'OCUPADA') setMesaOcupada(true);
+        if (mesa && mesa.estado === 'OCUPADA') setTableOccupied(true);
       })
       .catch(() => {});
   }, [mesaId, sedeId]);
 
-  const agregar = (p: Producto) => {
-    setCarrito((prev) => {
-      const existe = prev.find((i) => i.productoId === p.id);
-      if (existe) {
+  const add = (p: Producto) => {
+    setCart((prev) => {
+      const exists = prev.find((i) => i.productoId === p.id);
+      if (exists) {
         return prev.map((i) =>
           i.productoId === p.id ? { ...i, cantidad: i.cantidad + 1 } : i
         );
@@ -57,8 +57,8 @@ export default function TomarPedido() {
     });
   };
 
-  const quitar = (id: number) => {
-    setCarrito((prev) =>
+  const remove = (id: number) => {
+    setCart((prev) =>
       prev
         .map((i) =>
           i.productoId === id ? { ...i, cantidad: i.cantidad - 1 } : i
@@ -67,75 +67,69 @@ export default function TomarPedido() {
     );
   };
 
-  const total = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  const total = cart.reduce((s, i) => s + i.precio * i.cantidad, 0);
 
-  const filtrados = productos.filter((p) =>
-    p.nombre?.toLowerCase().includes(busqueda.toLowerCase())
+  const filtered = productos.filter((p) =>
+    p.nombre?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const guardar = async () => {
-    if (carrito.length === 0) return alert('Agrega al menos una botella');
-    if (guardando) return;
+  const save = async () => {
+    if (cart.length === 0) return alert('Add at least one bottle');
+    if (saving) return;
 
-    setGuardando(true);
+    setSaving(true);
     try {
       const body = {
         mesaId: Number(mesaId),
         sedeId,
-        detalles: carrito.map((i) => ({
+        detalles: cart.map((i) => ({
           productoId: i.productoId,
           cantidad: i.cantidad,
         })),
       };
 
-      // 1. Crear el pedido
       await api.post('/api/orders', body);
 
-      // 2. Actualizar la mesa a OCUPADA
       try {
         await api.put(`/api/tables/${mesaId}`, { estado: 'OCUPADA' });
       } catch (err) {
-        console.warn('No se pudo actualizar la mesa:', err);
+        console.warn('Could not update table:', err);
       }
 
-      alert('Pedido guardado. La mesa queda OCUPADA.');
+      alert('Order saved. Table is now OCCUPIED.');
       navigate('/mesera/mesas');
     } catch (err: any) {
-      console.error('Error al guardar pedido:', err);
+      console.error('Error saving order:', err);
       alert(
         err.response?.data?.message ||
           err.response?.data?.error ||
-          'Error al guardar el pedido. Revisa la consola.'
+          'Error saving order. Check the console.'
       );
     } finally {
-      setGuardando(false);
+      setSaving(false);
     }
   };
 
-  const liberarMesa = async () => {
-    if (
-      !confirm('¿Liberar esta mesa? Quedará disponible para nuevos clientes.')
-    )
+  const releaseTable = async () => {
+    if (!confirm('Release this table? It will become available for new customers.'))
       return;
 
     try {
-      // Solo actualizar la mesa a DISPONIBLE
       await api.put(`/api/tables/${mesaId}`, { estado: 'DISPONIBLE' });
-
-      alert('Mesa liberada.');
+      alert('Table released.');
       navigate('/mesera/mesas');
     } catch (err: any) {
-      console.error('Error al liberar mesa:', err);
+      console.error('Error releasing table:', err);
       alert(
         err.response?.data?.message ||
           err.response?.data?.error ||
-          'Error al liberar la mesa. Revisa la consola.'
+          'Error releasing table. Check the console.'
       );
     }
   };
 
-  // ==================== MESA OCUPADA ====================
-  if (mesaOcupada) {
+  // ==================== TABLE OCCUPIED ====================
+  if (tableOccupied) {
     return (
       <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
         <Navbar />
@@ -146,7 +140,7 @@ export default function TomarPedido() {
             className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-800 mb-8 flex items-center gap-1"
             style={{ letterSpacing: '0.15em' }}
           >
-            ← Volver a mesas
+            ← Back to tables
           </button>
 
           <div
@@ -167,17 +161,17 @@ export default function TomarPedido() {
               className="text-xs uppercase tracking-widest text-gray-500 mb-2"
               style={{ letterSpacing: '0.15em' }}
             >
-              Mesa {numeroMesa}
+              Table {tableNumber}
             </p>
             <h1
               className="font-display text-4xl mb-3"
               style={{ color: 'var(--bar-dark)' }}
             >
-              Esta mesa está ocupada
+              This table is occupied
             </h1>
             <p className="text-gray-500 mb-8 max-w-md mx-auto">
-              Ya tiene un pedido activo. Si el cliente terminó y se retiró,
-              puedes liberar la mesa para nuevos clientes.
+              It already has an active order. If the customer has finished and
+              left, you can release the table for new customers.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -186,14 +180,14 @@ export default function TomarPedido() {
                 className="px-6 py-3 rounded-lg border font-medium text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                 style={{ borderColor: 'rgba(0,0,0,0.15)' }}
               >
-                Volver
+                Back
               </button>
               <button
-                onClick={liberarMesa}
+                onClick={releaseTable}
                 className="px-6 py-3 rounded-lg text-white font-medium text-sm transition-all hover:translate-y-[-1px]"
                 style={{ background: '#b71c1c' }}
               >
-                Liberar mesa
+                Release table
               </button>
             </div>
           </div>
@@ -202,7 +196,7 @@ export default function TomarPedido() {
     );
   }
 
-  // ==================== MESA DISPONIBLE → TOMAR PEDIDO ====================
+  // ==================== TABLE AVAILABLE → TAKE ORDER ====================
   return (
     <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
       <Navbar />
@@ -214,16 +208,16 @@ export default function TomarPedido() {
             className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-800 mb-2 flex items-center gap-1"
             style={{ letterSpacing: '0.15em' }}
           >
-            ← Volver a mesas
+            ← Back to tables
           </button>
           <h1
             className="font-display text-4xl"
             style={{ color: 'var(--bar-dark)' }}
           >
-            Mesa {numeroMesa}
+            Table {tableNumber}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Nueva comanda · disponible
+            New order · available
           </p>
         </header>
 
@@ -231,23 +225,23 @@ export default function TomarPedido() {
           <section className="lg:col-span-3">
             <input
               type="text"
-              placeholder="Buscar botella..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Search bottle..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full mb-4 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
               style={{ borderColor: 'rgba(0,0,0,0.1)' }}
             />
 
             {loading ? (
-              <p className="text-gray-400">Cargando carta...</p>
+              <p className="text-gray-400">Loading menu...</p>
             ) : (
               <div className="grid sm:grid-cols-2 gap-3">
-                {filtrados.map((p) => {
+                {filtered.map((p) => {
                   const categoria = p.categoria || categoriaProducto(p.nombre);
                   return (
                     <button
                       key={p.id}
-                      onClick={() => agregar(p)}
+                      onClick={() => add(p)}
                       className="bg-white border rounded-xl p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all relative"
                       style={{ borderColor: 'rgba(212,162,76,0.35)' }}
                     >
@@ -289,19 +283,19 @@ export default function TomarPedido() {
                   className="text-xs uppercase tracking-widest text-gray-500"
                   style={{ letterSpacing: '0.15em' }}
                 >
-                  Nueva comanda
+                  New order
                 </p>
               </div>
 
               <div className="px-6 py-4 max-h-96 overflow-y-auto">
-                {carrito.length === 0 ? (
+                {cart.length === 0 ? (
                   <p className="text-gray-400 text-sm text-center py-8">
-                    Aún no hay botellas.
+                    No bottles yet.
                     <br />
-                    Toca una para agregarla.
+                    Tap one to add it.
                   </p>
                 ) : (
-                  carrito.map((i) => (
+                  cart.map((i) => (
                     <div
                       key={i.productoId}
                       className="flex justify-between items-center py-3 border-b last:border-0"
@@ -317,7 +311,7 @@ export default function TomarPedido() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => quitar(i.productoId)}
+                          onClick={() => remove(i.productoId)}
                           className="w-7 h-7 rounded border flex items-center justify-center hover:bg-gray-100 transition-colors text-gray-600"
                           style={{ borderColor: 'rgba(0,0,0,0.1)' }}
                         >
@@ -328,7 +322,7 @@ export default function TomarPedido() {
                         </span>
                         <button
                           onClick={() =>
-                            agregar({
+                            add({
                               id: i.productoId,
                               nombre: i.nombre,
                               precio: i.precio,
@@ -368,15 +362,15 @@ export default function TomarPedido() {
                     className="flex-1 py-3 rounded-lg border font-medium text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                     style={{ borderColor: 'rgba(0,0,0,0.15)' }}
                   >
-                    Cancelar
+                    Cancel
                   </button>
                   <button
-                    onClick={guardar}
-                    disabled={carrito.length === 0 || guardando}
+                    onClick={save}
+                    disabled={cart.length === 0 || saving}
                     className="flex-1 py-3 rounded-lg text-white font-medium text-sm transition-all disabled:opacity-40 hover:translate-y-[-1px]"
                     style={{ background: 'var(--bar-dark)' }}
                   >
-                    {guardando ? 'Guardando...' : 'Enviar a mesa'}
+                    {saving ? 'Saving...' : 'Send to table'}
                   </button>
                 </div>
               </div>

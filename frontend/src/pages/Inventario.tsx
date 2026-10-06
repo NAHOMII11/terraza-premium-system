@@ -8,34 +8,31 @@ export default function Inventario() {
   useInactivityLogout();
   const [items, setItems] = useState<InventarioItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busqueda, setBusqueda] = useState('');
+  const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const sedeId = localStorage.getItem('sedeId') || '1';
 
   useEffect(() => {
-    console.log('🔍 Cargando inventario para sede:', sedeId);
     api
       .get(`/api/inventory?sedeId=${sedeId}`)
       .then((r) => {
-        console.log('✅ Inventario recibido:', r.data);
-        console.log('📊 Total items:', r.data?.length || 0);
         setItems(Array.isArray(r.data) ? r.data : []);
       })
       .catch((err) => {
-        console.error('❌ Error al cargar inventario:', err);
-        setError(err.response?.data?.message || 'Error al cargar inventario');
+        console.error('Error loading inventory:', err);
+        setError(err.response?.data?.message || 'Error loading inventory');
       })
       .finally(() => setLoading(false));
   }, [sedeId]);
 
-  const filtrados = items.filter((i) =>
-    (i.productoNombre || '').toLowerCase().includes(busqueda.toLowerCase())
+  const filtered = items.filter((i) =>
+    (i.productoNombre || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const nivelStock = (cantidad: number) => {
-    if (cantidad > 20) return { label: 'Óptimo', color: '#1b5e20', bg: '#e8f5e9' };
-    if (cantidad > 5) return { label: 'Moderado', color: '#e65100', bg: '#fff8e1' };
-    return { label: 'Bajo', color: '#b71c1c', bg: '#ffebee' };
+  const stockLevel = (qty: number) => {
+    if (qty > 20) return { label: 'Optimal', color: '#1b5e20', bg: '#e8f5e9' };
+    if (qty > 5) return { label: 'Moderate', color: '#e65100', bg: '#fff8e1' };
+    return { label: 'Low', color: '#b71c1c', bg: '#ffebee' };
   };
 
   return (
@@ -49,65 +46,74 @@ export default function Inventario() {
               className="text-xs uppercase tracking-widest text-gray-500 mb-2"
               style={{ letterSpacing: '0.15em' }}
             >
-              Sede {sedeId}
+              Branch {sedeId}
             </p>
             <h1
               className="font-display text-4xl"
               style={{ color: 'var(--bar-dark)' }}
             >
-              Inventario
+              Inventory
             </h1>
           </div>
           <p className="text-sm text-gray-500">
-            {filtrados.length} producto{filtrados.length !== 1 ? 's' : ''}
+            {filtered.length} product{filtered.length !== 1 ? 's' : ''}
           </p>
         </header>
 
         <div className="mb-6">
           <input
             type="text"
-            placeholder="Buscar producto..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Search product..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
             style={{ borderColor: 'rgba(0,0,0,0.1)' }}
           />
         </div>
 
         {error && (
-          <div className="mb-6 px-4 py-3 rounded-lg text-sm"
-               style={{ background: '#fef2f2', color: '#991b1b' }}>
+          <div
+            className="mb-6 px-4 py-3 rounded-lg text-sm"
+            style={{ background: '#fef2f2', color: '#991b1b' }}
+          >
             {error}
           </div>
         )}
 
         {loading ? (
-          <p className="text-gray-400">Cargando inventario...</p>
-        ) : filtrados.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed rounded-xl"
-               style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
-            <p className="text-gray-400">No hay productos en el inventario.</p>
+          <p className="text-gray-400">Loading inventory...</p>
+        ) : filtered.length === 0 ? (
+          <div
+            className="text-center py-20 border-2 border-dashed rounded-xl"
+            style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+          >
+            <p className="text-gray-400">No products in inventory.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border overflow-hidden"
-               style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+          <div
+            className="bg-white rounded-xl border overflow-hidden"
+            style={{ borderColor: 'rgba(0,0,0,0.08)' }}
+          >
             <table className="w-full">
               <thead>
-                <tr className="border-b" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+                <tr
+                  className="border-b"
+                  style={{ borderColor: 'rgba(0,0,0,0.08)' }}
+                >
                   <th className="text-left px-6 py-4 text-xs uppercase tracking-widest text-gray-500 font-medium">
-                    Producto
+                    Product
                   </th>
                   <th className="text-right px-6 py-4 text-xs uppercase tracking-widest text-gray-500 font-medium">
-                    Existencias
+                    Stock
                   </th>
                   <th className="text-right px-6 py-4 text-xs uppercase tracking-widest text-gray-500 font-medium hidden sm:table-cell">
-                    Estado
+                    Status
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((it) => {
-                  const nivel = nivelStock(it.cantidad);
+                {filtered.map((it) => {
+                  const level = stockLevel(it.cantidad);
                   return (
                     <tr
                       key={it.id}
@@ -131,9 +137,9 @@ export default function Inventario() {
                       <td className="px-6 py-4 text-right hidden sm:table-cell">
                         <span
                           className="inline-block px-2.5 py-1 rounded-full text-xs font-medium"
-                          style={{ background: nivel.bg, color: nivel.color }}
+                          style={{ background: level.bg, color: level.color }}
                         >
-                          {nivel.label}
+                          {level.label}
                         </span>
                       </td>
                     </tr>

@@ -4,23 +4,35 @@ import Navbar from '../components/Navbar';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { Producto } from '../types';
 
-type Categoria = 'todos' | 'cerveza' | 'aguardiente' | 'ron' | 'whisky' | 'tequila' | 'vino';
+type Category = 'all' | 'beer' | 'aguardiente' | 'rum' | 'whisky' | 'tequila' | 'wine';
 
-const LABELS: Record<Categoria, string> = {
-  todos: 'Todo',
-  cerveza: 'Cervezas',
-  aguardiente: 'Aguardientes',
-  ron: 'Rones',
+const LABELS: Record<Category, string> = {
+  all: 'All',
+  beer: 'Beers',
+  aguardiente: 'Aguardiente',
+  rum: 'Rums',
   whisky: 'Whisky',
   tequila: 'Tequila/Vodka',
-  vino: 'Vinos',
+  wine: 'Wines',
+};
+
+const translateCategory = (cat: string): Category => {
+  const map: Record<string, Category> = {
+    cerveza: 'beer',
+    aguardiente: 'aguardiente',
+    ron: 'rum',
+    whisky: 'whisky',
+    tequila: 'tequila',
+    vino: 'wine',
+  };
+  return map[cat] || 'beer';
 };
 
 export default function Productos() {
   useInactivityLogout();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<Categoria>('todos');
+  const [filter, setFilter] = useState<Category>('all');
 
   useEffect(() => {
     api
@@ -30,14 +42,15 @@ export default function Productos() {
       .finally(() => setLoading(false));
   }, []);
 
-  const cat = (p: Producto) => categoriaProducto(p.nombre);
+  const cat = (p: Producto): Category =>
+    translateCategory(p.categoria || categoriaProducto(p.nombre));
 
-  const filtrados = productos.filter((p) =>
-    filtro === 'todos' ? true : cat(p) === filtro
+  const filtered = productos.filter((p) =>
+    filter === 'all' ? true : cat(p) === filter
   );
 
-  const conteo = (c: Categoria) =>
-    c === 'todos' ? productos.length : productos.filter((p) => cat(p) === c).length;
+  const count = (c: Category) =>
+    c === 'all' ? productos.length : productos.filter((p) => cat(p) === c).length;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
@@ -45,48 +58,55 @@ export default function Productos() {
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         <header className="mb-8">
-          <p className="text-xs uppercase tracking-widest text-gray-500 mb-2"
-             style={{ letterSpacing: '0.15em' }}>
-            Carta de licores · solo botellas
+          <p
+            className="text-xs uppercase tracking-widest text-gray-500 mb-2"
+            style={{ letterSpacing: '0.15em' }}
+          >
+            Liquor menu · bottles only
           </p>
-          <h1 className="font-display text-4xl" style={{ color: 'var(--bar-dark)' }}>
-            Nuestras botellas
+          <h1
+            className="font-display text-4xl"
+            style={{ color: 'var(--bar-dark)' }}
+          >
+            Our selection
           </h1>
         </header>
 
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-          {(Object.keys(LABELS) as Categoria[]).map((c) => {
-            const activo = filtro === c;
+          {(Object.keys(LABELS) as Category[]).map((c) => {
+            const active = filter === c;
             return (
               <button
                 key={c}
-                onClick={() => setFiltro(c)}
+                onClick={() => setFilter(c)}
                 className="px-4 py-2 rounded-full border whitespace-nowrap text-sm transition-all"
                 style={{
-                  background: activo ? 'var(--bar-dark)' : 'white',
-                  color: activo ? 'var(--bar-gold)' : '#555',
-                  borderColor: activo ? 'var(--bar-dark)' : 'rgba(0,0,0,0.1)',
+                  background: active ? 'var(--bar-dark)' : 'white',
+                  color: active ? 'var(--bar-gold)' : '#555',
+                  borderColor: active ? 'var(--bar-dark)' : 'rgba(0,0,0,0.1)',
                 }}
               >
-                {LABELS[c]} ({conteo(c)})
+                {LABELS[c]} ({count(c)})
               </button>
             );
           })}
         </div>
 
         {loading ? (
-          <p className="text-gray-400">Cargando...</p>
+          <p className="text-gray-400">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtrados.map((p) => (
+            {filtered.map((p) => (
               <div
                 key={p.id}
                 className="rounded-xl border p-5 hover:shadow-lg transition-all relative"
                 style={{ background: 'white', borderColor: 'rgba(212,162,76,0.35)' }}
               >
                 <div className="flex justify-end mb-2">
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(139,44,44,0.08)', color: 'var(--bar-red)' }}>
+                  <span
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(139,44,44,0.08)', color: 'var(--bar-red)' }}
+                  >
                     +18
                   </span>
                 </div>
@@ -95,7 +115,10 @@ export default function Productos() {
                   {p.nombre}
                 </h3>
 
-                <p className="font-display text-2xl" style={{ color: 'var(--bar-dark)' }}>
+                <p
+                  className="font-display text-2xl"
+                  style={{ color: 'var(--bar-dark)' }}
+                >
                   ${p.precio?.toLocaleString()}
                 </p>
               </div>

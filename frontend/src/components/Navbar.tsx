@@ -5,8 +5,8 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const cerrarSesion = async () => {
-    if (!confirm('¿Cerrar sesión?')) return;
+  const logout = async () => {
+    if (!confirm('Close session?')) return;
     try {
       await api.post('/api/auth/logout');
     } catch {}
@@ -15,10 +15,10 @@ export default function Navbar() {
   };
 
   const items = [
-    { label: 'Mesas', path: '/mesera/mesas' },
-    { label: 'Pedidos', path: '/mesera/pedidos' },
-    { label: 'Carta', path: '/mesera/productos' },
-    { label: 'Inventario', path: '/mesera/inventario' },
+    { label: 'Tables', path: '/mesera/mesas' },
+    { label: 'Orders', path: '/mesera/pedidos' },
+    { label: 'Menu', path: '/mesera/productos' },
+    { label: 'Inventory', path: '/mesera/inventario' },
   ];
 
   return (
@@ -27,7 +27,6 @@ export default function Navbar() {
       style={{ background: 'var(--bar-dark)', borderColor: 'rgba(212,162,76,0.15)' }}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
-        {/* Logo */}
         <button
           onClick={() => navigate('/mesera/mesas')}
           className="flex items-center gap-3 shrink-0"
@@ -40,12 +39,11 @@ export default function Navbar() {
             <p className="font-display text-white text-lg leading-none">Terraza Premium</p>
             <p className="text-[10px] uppercase tracking-widest mt-0.5"
                style={{ letterSpacing: '0.25em', color: 'var(--bar-gold)' }}>
-              Bar · Mesera
+              Bar · Waitress
             </p>
           </div>
         </button>
 
-        {/* Nav desktop */}
         <nav className="hidden md:flex items-center gap-1">
           {items.map((item) => {
             const active = location.pathname.startsWith(item.path);
@@ -65,26 +63,24 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Sesión */}
         <div className="flex items-center gap-4">
           <div className="hidden md:flex flex-col items-end">
             <p className="text-white/70 text-xs">{localStorage.getItem('email')}</p>
             <p className="text-[10px] uppercase tracking-widest"
                style={{ color: 'var(--bar-gold)' }}>
-              Mesera
+              Waitress
             </p>
           </div>
           <button
-            onClick={cerrarSesion}
+            onClick={logout}
             className="text-white/60 hover:text-white text-sm transition-colors border rounded-md px-3 py-1.5"
             style={{ borderColor: 'rgba(212,162,76,0.3)' }}
           >
-            Salir
+            Sign out
           </button>
         </div>
       </div>
 
-      {/* Nav móvil */}
       <nav className="md:hidden flex border-t overflow-x-auto"
            style={{ borderColor: 'rgba(212,162,76,0.15)' }}>
         {items.map((item) => {
