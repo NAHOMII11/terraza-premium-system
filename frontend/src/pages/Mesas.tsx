@@ -25,14 +25,31 @@ export default function Mesas() {
     cargarMesas();
   }, [sedeId]);
 
+  const esDisponible = (estado: string) =>
+    estado === 'DISPONIBLE' || estado === 'LIBRE';
+  const esOcupada = (estado: string) => estado === 'OCUPADA';
+
   const estadoConfig = (estado: string) => {
-    if (estado === 'OCUPADA')
-      return { bg: '#ffebee', border: '#ef9a9a', text: '#b71c1c', dot: '#ef5350', label: 'Ocupada' };
-    return { bg: '#e8f5e9', border: '#a5d6a7', text: '#1b5e20', dot: '#4caf50', label: 'Disponible' };
+    if (esOcupada(estado)) {
+      return {
+        bg: '#ffebee',
+        border: '#ef9a9a',
+        text: '#b71c1c',
+        dot: '#ef5350',
+        label: 'Ocupada',
+      };
+    }
+    return {
+      bg: '#e8f5e9',
+      border: '#a5d6a7',
+      text: '#1b5e20',
+      dot: '#4caf50',
+      label: 'Disponible',
+    };
   };
 
-  const libres = mesas.filter((m) => m.estado === 'LIBRE').length;
-  const ocupadas = mesas.filter((m) => m.estado === 'OCUPADA').length;
+  const libres = mesas.filter((m) => esDisponible(m.estado)).length;
+  const ocupadas = mesas.filter((m) => esOcupada(m.estado)).length;
 
   const liberarMesa = async (mesaId: number, numero: number) => {
     if (!confirm(`¿Liberar la mesa ${numero}? Quedará disponible.`)) return;
@@ -49,7 +66,7 @@ export default function Mesas() {
       if (pedidoActivo) {
         await api.put(`/api/orders/${pedidoActivo.id}`, { estado: 'CERRADO' });
       } else {
-        await api.put(`/api/tables/${mesaId}`, { estado: 'LIBRE' });
+        await api.put(`/api/tables/${mesaId}`, { estado: 'DISPONIBLE' });
       }
 
       cargarMesas();
@@ -65,22 +82,38 @@ export default function Mesas() {
       <main className="max-w-7xl mx-auto px-6 py-10">
         <header className="mb-10 flex flex-wrap justify-between items-end gap-4">
           <div>
-            <p className="text-xs uppercase tracking-widest text-gray-500 mb-2"
-               style={{ letterSpacing: '0.15em' }}>
+            <p
+              className="text-xs uppercase tracking-widest text-gray-500 mb-2"
+              style={{ letterSpacing: '0.15em' }}
+            >
               Salón · Sede {sedeId}
             </p>
-            <h1 className="font-display text-4xl" style={{ color: 'var(--bar-dark)' }}>
+            <h1
+              className="font-display text-4xl"
+              style={{ color: 'var(--bar-dark)' }}
+            >
               Estado de mesas
             </h1>
           </div>
           <div className="flex gap-6">
             <div>
-              <p className="text-xs uppercase tracking-widest text-gray-500">Disponibles</p>
-              <p className="font-display text-3xl" style={{ color: '#1b5e20' }}>{libres}</p>
+              <p className="text-xs uppercase tracking-widest text-gray-500">
+                Disponibles
+              </p>
+              <p className="font-display text-3xl" style={{ color: '#1b5e20' }}>
+                {libres}
+              </p>
             </div>
-            <div className="border-l pl-6" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
-              <p className="text-xs uppercase tracking-widest text-gray-500">Ocupadas</p>
-              <p className="font-display text-3xl" style={{ color: '#b71c1c' }}>{ocupadas}</p>
+            <div
+              className="border-l pl-6"
+              style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+            >
+              <p className="text-xs uppercase tracking-widest text-gray-500">
+                Ocupadas
+              </p>
+              <p className="font-display text-3xl" style={{ color: '#b71c1c' }}>
+                {ocupadas}
+              </p>
             </div>
           </div>
         </header>
@@ -88,15 +121,21 @@ export default function Mesas() {
         {loading ? (
           <p className="text-gray-400">Cargando mesas...</p>
         ) : mesas.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed rounded-xl"
-               style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
-            <p className="text-gray-400">No hay mesas registradas en esta sede.</p>
+          <div
+            className="text-center py-20 border-2 border-dashed rounded-xl"
+            style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+          >
+            <p className="text-gray-400">
+              No hay mesas registradas en esta sede.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {mesas.map((mesa) => {
+            {mesas.map((mesa, index) => {
               const cfg = estadoConfig(mesa.estado);
-              const ocupada = mesa.estado === 'OCUPADA';
+              const ocupada = esOcupada(mesa.estado);
+              // Número visible: usa el numero real de la BD, o el index+1 como fallback
+              const numeroVisible = mesa.numero || index + 1;
               return (
                 <div
                   key={mesa.id}
@@ -104,20 +143,35 @@ export default function Mesas() {
                   style={{ background: cfg.bg, borderColor: cfg.border }}
                 >
                   <button
-                    onClick={() => navigate(`/mesera/pedido/${mesa.id}`)}
+                    onClick={() =>
+                      navigate(
+                        `/mesera/pedido/${mesa.id}?numero=${numeroVisible}`
+                      )
+                    }
                     className="w-full p-6 text-left"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs uppercase tracking-widest font-medium"
-                            style={{ color: cfg.text, letterSpacing: '0.1em' }}>
+                      <span
+                        className="text-xs uppercase tracking-widest font-medium"
+                        style={{ color: cfg.text, letterSpacing: '0.1em' }}
+                      >
                         Mesa
                       </span>
-                      <span className="w-2 h-2 rounded-full" style={{ background: cfg.dot }} />
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ background: cfg.dot }}
+                      />
                     </div>
-                    <p className="font-display text-4xl mb-1" style={{ color: cfg.text }}>
-                      {String(mesa.numero).padStart(2, '0')}
+                    <p
+                      className="font-display text-4xl mb-1"
+                      style={{ color: cfg.text }}
+                    >
+                      {String(numeroVisible).padStart(2, '0')}
                     </p>
-                    <p className="text-xs font-medium" style={{ color: cfg.text }}>
+                    <p
+                      className="text-xs font-medium"
+                      style={{ color: cfg.text }}
+                    >
                       {cfg.label}
                     </p>
                   </button>
@@ -126,10 +180,9 @@ export default function Mesas() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        liberarMesa(mesa.id, mesa.numero);
+                        liberarMesa(mesa.id, numeroVisible);
                       }}
-                      className="w-full py-2 text-[10px] uppercase tracking-widest font-semibold
-                                 border-t transition-colors hover:bg-red-100"
+                      className="w-full py-2 text-[10px] uppercase tracking-widest font-semibold border-t transition-colors hover:bg-red-100"
                       style={{
                         background: 'rgba(183,28,28,0.08)',
                         borderColor: cfg.border,
@@ -140,8 +193,10 @@ export default function Mesas() {
                       Liberar mesa
                     </button>
                   ) : (
-                    <div className="px-6 py-3 border-t flex items-center justify-between text-[10px] uppercase tracking-widest opacity-60"
-                         style={{ borderColor: cfg.border, color: cfg.text }}>
+                    <div
+                      className="px-6 py-3 border-t flex items-center justify-between text-[10px] uppercase tracking-widest opacity-60"
+                      style={{ borderColor: cfg.border, color: cfg.text }}
+                    >
                       <span>Tomar pedido</span>
                       <span>→</span>
                     </div>

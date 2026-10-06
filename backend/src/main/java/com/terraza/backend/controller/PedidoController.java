@@ -21,10 +21,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
 @RestController
-@RequestMapping("/api/orders")
-@RequiredArgsConstructor
+@RequestMapping({"/api/pedidos", "/api/orders"})@RequiredArgsConstructor
 public class PedidoController {
 
     private final PedidoService pedidoService;

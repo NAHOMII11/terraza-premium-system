@@ -1,23 +1,46 @@
-# Terraza Premium - Sistema de Gestión Integral de Bar
+# Terraza Premium — Frontend Mesera
 
-**Zenith Tech Studio** - 2026
+Frontend del sistema **Terraza Premium** para el rol **Mesera**.  
+Bar de licores colombianos — solo venta de botellas.
 
-Sistema de gestión para bar con 3 sedes: Galerías, Zona T y La 85.
+---
 
-## Estructura del proyecto
+##  Descripción
 
-- `backend/` - API REST en Spring Boot (Java 21)
-- `frontend/` - Interfaz web en React + TypeScript + Vite
-- `docs/` - Documentación del proyecto
+Aplicación web responsive para que las meseras puedan:
 
-## Roles del sistema
+- Tomar pedidos de botellas directamente desde la mesa
+- Consultar el estado de las mesas en tiempo real
+- Revisar la carta de licores disponibles
+- Ver el inventario por sede
+- Cerrar sesión automáticamente por inactividad
 
-- Mesero
-- Cajero
-- Administrador
+---
 
-## Equipo
+## 🛠️ Stack Tecnológico
 
-- Nahomi Lozada -  / Admin
-- Thais Duran -  / Mesera
-- Julian Velasco - /Cajero
+| Tecnología | Versión | Uso |
+|------------|---------|-----|
+| Vite | 8.x | Bundler y dev server |
+| React | 18.x | Librería de UI |
+| TypeScript | 5.x | Tipado estático |
+| Tailwind CSS | 4.x | Estilos utilitarios |
+| React Router | 6.x | Enrutamiento SPA |
+| Axios | 1.x | Cliente HTTP |
+
+---
+
+##  Requisitos previos
+
+Antes de ejecutar el proyecto necesitas tener instalado:
+
+- **Node.js 18+** → https://nodejs.org
+- **Git** → https://git-scm.com
+- **Backend corriendo** en `http://localhost:8080`
+
+Verifica que los tengas:
+
+```bash
+node -v      # debe ser v18 o superior
+npm -v       # debe ser v9 o superior
+git --version

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
-export function useInactivityLogout(timeoutMs = 180000) {
+export function useInactivityLogout(timeoutMs = 180000) {  // 3 minutos
   const navigate = useNavigate();
 
   useEffect(() => {

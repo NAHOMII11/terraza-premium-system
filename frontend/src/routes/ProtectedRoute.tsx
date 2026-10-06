@@ -11,7 +11,17 @@ export default function ProtectedRoute({ children, rolPermitido }: Props) {
   const rol = localStorage.getItem('rol');
 
   if (!token) return <Navigate to="/login" replace />;
-  if (rol !== rolPermitido) return <Navigate to="/login" replace />;
+
+  let rolesValidos: string[];
+  if (rolPermitido === 'MESERA') {
+    rolesValidos = ['MESERA', 'MESERO'];
+  } else {
+    rolesValidos = [rolPermitido];
+  }
+
+  if (!rol || !rolesValidos.includes(rol)) {
+    return <Navigate to="/login" replace />;
+  }
 
   return <>{children}</>;
 }

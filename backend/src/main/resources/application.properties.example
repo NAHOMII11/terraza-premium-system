@@ -3,7 +3,11 @@ server.port=8080
 
 spring.datasource.url=jdbc:postgresql://localhost:5432/terraza_premium
 spring.datasource.username=postgres
-spring.datasource.password=cambiar
+spring.datasource.password=123
 spring.datasource.driver-class-name=org.postgresql.Driver
-
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "SELECT version();"
 spring.jdbc.template.query-timeout=30
+
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
