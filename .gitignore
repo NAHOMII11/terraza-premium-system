@@ -25,3 +25,4 @@ backend/src/main/resources/application.properties
 # Sistema operativo
 .DS_Store
 Thumbs.db
+# Actualización
