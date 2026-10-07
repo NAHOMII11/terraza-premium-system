@@ -157,8 +157,7 @@ public class PedidoService {
             int stock = pedidoRepository.lockStock(sedeId, productoId)
                     .orElseThrow(() -> new BusinessException(
                             HttpStatus.CONFLICT,
-                            "El producto " + nombres.getOrDefault(productoId, String.valueOf(productoId))
-                                    + " no tiene inventario en la sede"));
+                            "Out of stock: " + nombres.getOrDefault(productoId, String.valueOf(productoId))));
             stockActual.put(productoId, stock);
         }
 
@@ -169,7 +168,7 @@ public class PedidoService {
             if (resultante < 0) {
                 throw new BusinessException(
                         HttpStatus.CONFLICT,
-                        "Stock insuficiente para el producto "
+                        "Out of stock: "
                                 + nombres.getOrDefault(productoId, String.valueOf(productoId)));
             }
             if (resultante > Integer.MAX_VALUE) {

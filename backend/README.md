@@ -63,6 +63,11 @@ En una base vacía, los identificadores quedan así:
 | CU004 | Gestionar sedes | ✅ Backend |
 | CU005 | Gestionar productos | ✅ Backend |
 | — | Flujo de pedidos (crear, modificar, listar) | ✅ Backend |
+| — | Mesas | ✅ Backend |
+| — | Inventario | ✅ Backend |
+| — | Proveedores | ✅ Backend |
+| — | Tipos de producto | ✅ Backend |
+| — | Pagos y factura | ✅ Backend |
 
 ## Endpoints de la API REST
 
@@ -317,6 +322,251 @@ El mesero del pedido es el usuario de la sesión, no un campo del body. El preci
 
 `sedeId` es obligatorio. Devuelve los pedidos en estado `ABIERTO` de esa sede. Cajero y mesero solo consultan su sede.
 
+Al registrar el pago, el pedido pasa a `CERRADO` y deja de salir en este listado. La factura sigue disponible en `GET /api/invoices/{orderId}`.
+
+---
+
+### Mesas
+
+El script no carga mesas. Para probar hay que insertarlas en PostgreSQL. `GET` solo devuelve mesas con `active = true`. Cajero y mesero solo consultan su sede. El administrador consulta cualquiera. Cambiar el estado no cierra el pedido: el mesero marca la mesa cuando corresponde.
+
+#### Listar mesas por sede
+
+- **Método:** `GET`
+- **URL:** `/api/tables?sedeId=1`
+- **Roles:** ADMIN, CAJERO, MESERO
+
+Respuesta (`200 OK`):
+
+```json
+[
+  {
+    "id": 1,
+    "numero": 1,
+    "capacidad": 4,
+    "sedeId": 1,
+    "estado": "DISPONIBLE"
+  }
+]
+```
+
+#### Actualizar estado de la mesa
+
+- **Método:** `PUT`
+- **URL:** `/api/tables/{id}`
+- **Roles:** ADMIN, MESERO
+- **Body:**
+
+```json
+{ "estado": "OCUPADA" }
+```
+
+`estado` solo acepta `DISPONIBLE` u `OCUPADA`. La respuesta es la mesa actualizada, con el mismo formato del listado.
+
+---
+
+### Inventario
+
+Un producto solo puede tener una fila de inventario por sede. Cajero y administrador operan el inventario. El cajero solo ve y modifica el de su sede.
+
+#### Listar inventario por sede
+
+- **Método:** `GET`
+- **URL:** `/api/inventory?sedeId=1`
+- **Roles:** ADMIN, CAJERO
+
+Respuesta (`200 OK`):
+
+```json
+[
+  {
+    "id": 1,
+    "productoId": 1,
+    "nombreProducto": "Cerveza Águila",
+    "codigoProducto": "P001",
+    "sedeId": 1,
+    "stock": 100
+  }
+]
+```
+
+#### Registrar producto en inventario
+
+- **Método:** `POST`
+- **URL:** `/api/inventory`
+- **Roles:** ADMIN, CAJERO
+- **Body:**
+
+```json
+{
+  "sedeId": 1,
+  "productoId": 1,
+  "stock": 100
+}
+```
+
+La sede y el producto deben existir y estar activos. `stock` no puede ser negativo. Respuesta: `201 Created`, con el mismo formato del listado.
+
+#### Actualizar stock
+
+- **Método:** `PUT`
+- **URL:** `/api/inventory/{id}`
+- **Roles:** ADMIN, CAJERO
+- **Body:**
+
+```json
+{ "stock": 150 }
+```
+
+`id` es el identificador de la fila de inventario, no el del producto. Respuesta: `200 OK`.
+
+---
+
+### Proveedores
+
+`GET` solo devuelve proveedores con `active = true`. `nit` es opcional. Si no se envía, queda vacío.
+
+#### Listar proveedores
+
+- **Método:** `GET`
+- **URL:** `/api/suppliers`
+- **Roles:** ADMIN
+
+#### Crear proveedor
+
+- **Método:** `POST`
+- **URL:** `/api/suppliers`
+- **Roles:** ADMIN
+- **Body:**
+
+```json
+{
+  "nombre": "Distribuidora Bogotá",
+  "contacto": "Carlos Pérez",
+  "telefono": "3001112233",
+  "email": "contacto@distribuidora.com",
+  "direccion": "Calle 20 # 15-30"
+}
+```
+
+Respuesta (`201 Created`):
+
+```json
+{
+  "id": 1,
+  "nombre": "Distribuidora Bogotá",
+  "nit": null,
+  "contacto": "Carlos Pérez",
+  "telefono": "3001112233",
+  "email": "contacto@distribuidora.com",
+  "direccion": "Calle 20 # 15-30"
+}
+```
+
+---
+
+### Tipos de producto
+
+`GET` solo devuelve tipos con `active = true`. El nombre no se puede repetir.
+
+#### Listar tipos de producto
+
+- **Método:** `GET`
+- **URL:** `/api/product-types`
+- **Roles:** ADMIN
+
+#### Crear tipo de producto
+
+- **Método:** `POST`
+- **URL:** `/api/product-types`
+- **Roles:** ADMIN
+- **Body:**
+
+```json
+{
+  "nombre": "Cerveza",
+  "descripcion": "Cervezas nacionales e importadas"
+}
+```
+
+Respuesta: `201 Created`, con `id`, `nombre` y `descripcion`.
+
+---
+
+### Pagos y factura
+
+Solo se cobra un pedido en estado `ABIERTO`. El pago lo cierra: guarda `cajero_id`, `fecha_cierre` y estado `CERRADO`. No se puede pagar dos veces. En efectivo, el monto puede ser mayor que el total y la respuesta trae el cambio. Con `TARJETA_CREDITO` o `TARJETA_DEBITO`, el monto debe ser igual al total y el cambio queda en cero. Al registrar el pago la mesa del pedido pasa a `DISPONIBLE`.
+
+Si quien cobra es cajero, `cajeroId` tiene que ser su propio id y el pedido tiene que ser de su sede. El administrador puede cobrar con su id o con el id de un cajero de esa sede.
+
+#### Registrar pago
+
+- **Método:** `POST`
+- **URL:** `/api/payments`
+- **Roles:** ADMIN, CAJERO
+- **Body:**
+
+```json
+{
+  "pedidoId": 1,
+  "metodoPago": "EFECTIVO",
+  "monto": 50000,
+  "cajeroId": 2
+}
+```
+
+Respuesta (`201 Created`):
+
+```json
+{
+  "mensaje": "Pago registrado",
+  "cambio": 10000
+}
+```
+
+#### Generar factura en pantalla
+
+- **Método:** `GET`
+- **URL:** `/api/invoices/{orderId}`
+- **Roles:** ADMIN, CAJERO
+
+`orderId` es el id del pedido. Sirve antes y después del pago. Si todavía no hay pago, `pago` llega en `null`.
+
+Respuesta (`200 OK`):
+
+```json
+{
+  "pedidoId": 1,
+  "sedeId": 1,
+  "sedeNombre": "Galerías",
+  "mesaId": 1,
+  "mesaNumero": 1,
+  "meseroNombre": "Thais Mesera",
+  "estado": "CERRADO",
+  "total": 40000.00,
+  "fechaApertura": "2026-10-06T12:00:00",
+  "fechaCierre": "2026-10-06T12:30:00",
+  "detalles": [
+    {
+      "productoId": 1,
+      "productoNombre": "Cerveza Águila",
+      "cantidad": 2,
+      "precioUnitario": 20000.00,
+      "subtotal": 40000.00
+    }
+  ],
+  "pago": {
+    "id": 1,
+    "metodoPago": "EFECTIVO",
+    "monto": 50000.00,
+    "cambio": 10000.00,
+    "cajeroId": 2,
+    "cajeroNombre": "Julián Cajero",
+    "fechaPago": "2026-10-06T12:30:00"
+  }
+}
+```
+
 ## Seguridad — OWASP Top 10 2021
 
 | Categoría | Implementación |
@@ -332,15 +582,17 @@ El mesero del pedido es el usuario de la sesión, no un campo del body. El preci
 | A09 — Logging | Tabla `auditoria` con usuario, operación, detalle, IP, sede y fecha |
 | A10 — Sin URLs externas | El backend no consume servicios externos |
 
-La auditoría registra inicios de sesión, cierres de sesión, logins fallidos, accesos denegados (403), errores inesperados y cada alta, edición o desactivación.
+La auditoría registra inicios de sesión, cierres de sesión, logins fallidos, accesos denegados (403), errores inesperados y cada alta, edición o desactivación. También queda el cambio de estado de una mesa, el alta y el ajuste de inventario, el alta de proveedores y tipos de producto, el registro de un pago y la consulta de una factura.
 
 ## Credenciales de prueba
 
 | Rol | Email | Contraseña | Sede |
 |---|---|---|---|
 | Admin | admin@terrazapremium.com | Admin123* | Galerías |
+| Mesero | thais@terrazapremium.com | Mesera123* | Galerías |
+| Cajero | julian@terrazapremium.com | Cajero123* | Galerías |
 
-Esa cuenta la inserta `schema.sql`. Mesera y cajero no vienen en el script: se crean con `POST /api/users`.
+Esas cuentas las inserta `schema.sql`.
 
 ## Cómo levantar el backend
 

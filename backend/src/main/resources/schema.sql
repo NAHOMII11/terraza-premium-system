@@ -178,3 +178,34 @@ WHERE r.nombre = 'ADMIN'
   AND NOT EXISTS (
       SELECT 1 FROM usuarios u WHERE LOWER(u.email) = 'admin@terrazapremium.com'
   );
+
+-- Claves temporales de prueba: Mesera123* y Cajero123*
+INSERT INTO usuarios (nombre, email, password_hash, rol_id, sede_id, active)
+SELECT 'Thais Duran',
+       'thais@terrazapremium.com',
+       '$2a$12$yeA52Bl86llg6wbYxuFKBOszCm0F1TZf49pDI7.Y2t8m1Qsh/7o7O',
+       r.id,
+       s.id,
+       TRUE
+FROM roles r
+CROSS JOIN sedes s
+WHERE r.nombre = 'MESERO'
+  AND s.nombre = 'Galerías'
+  AND NOT EXISTS (
+      SELECT 1 FROM usuarios u WHERE LOWER(u.email) = 'thais@terrazapremium.com'
+  );
+
+INSERT INTO usuarios (nombre, email, password_hash, rol_id, sede_id, active)
+SELECT 'Julian Velasco',
+       'julian@terrazapremium.com',
+       '$2a$12$4gYpj8D0y0CzsiqnW/cIju6D7XimHsFoNwxck96ioBVz8uz6C0ugK',
+       r.id,
+       s.id,
+       TRUE
+FROM roles r
+CROSS JOIN sedes s
+WHERE r.nombre = 'CAJERO'
+  AND s.nombre = 'Galerías'
+  AND NOT EXISTS (
+      SELECT 1 FROM usuarios u WHERE LOWER(u.email) = 'julian@terrazapremium.com'
+  );

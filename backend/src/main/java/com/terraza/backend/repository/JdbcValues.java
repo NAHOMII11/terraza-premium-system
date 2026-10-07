@@ -15,6 +15,11 @@ final class JdbcValues {
         return rs.wasNull() ? null : value;
     }
 
+    static Integer integerOrNull(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
     static LocalDateTime dateTimeOrNull(ResultSet rs, String column) throws SQLException {
         Timestamp timestamp = rs.getTimestamp(column);
         return timestamp == null ? null : timestamp.toLocalDateTime();
