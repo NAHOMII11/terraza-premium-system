@@ -10,11 +10,11 @@ import lombok.Setter;
 @Setter
 public class DetallePedidoRequest {
 
-    @NotNull(message = "El producto es obligatorio")
+    @NotNull(message = "Product is required")
     private Long productoId;
 
-    @NotNull(message = "La cantidad es obligatoria")
-    @Min(value = 1, message = "La cantidad debe ser mayor a cero")
-    @Max(value = 999, message = "La cantidad supera el máximo permitido")
+    @NotNull(message = "Quantity is required")
+    @Min(value = 1, message = "Quantity must be greater than zero")
+    @Max(value = 999, message = "Quantity exceeds the allowed maximum")
     private Integer cantidad;
 }

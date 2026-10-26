@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class ActualizarEstadoMesaDTO {
 
-    @NotNull(message = "El estado es obligatorio")
-    @Pattern(regexp = "DISPONIBLE|OCUPADA", message = "El estado debe ser DISPONIBLE u OCUPADA")
+    @NotNull(message = "Status is required")
+    @Pattern(regexp = "DISPONIBLE|OCUPADA", message = "Status must be DISPONIBLE or OCUPADA")
     private String estado;
 }

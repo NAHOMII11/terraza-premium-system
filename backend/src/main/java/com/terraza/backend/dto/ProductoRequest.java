@@ -14,28 +14,28 @@ import java.math.BigDecimal;
 @Setter
 public class ProductoRequest {
 
-    @NotBlank(message = "El código es obligatorio")
-    @Size(max = 50, message = "El código es demasiado largo")
+    @NotBlank(message = "Code is required")
+    @Size(max = 50, message = "Code is too long")
     private String codigo;
 
-    @NotBlank(message = "El nombre es obligatorio")
-    @Size(max = 150, message = "El nombre es demasiado largo")
+    @NotBlank(message = "Name is required")
+    @Size(max = 150, message = "Name is too long")
     private String nombre;
 
-    @Size(max = 500, message = "La descripción es demasiado larga")
+    @Size(max = 500, message = "Description is too long")
     private String descripcion;
 
-    @NotNull(message = "El valor de compra es obligatorio")
-    @DecimalMin(value = "0.00", message = "El valor de compra no puede ser negativo")
-    @Digits(integer = 10, fraction = 2, message = "El valor de compra tiene un formato inválido")
+    @NotNull(message = "Purchase price is required")
+    @DecimalMin(value = "0.00", message = "Purchase price cannot be negative")
+    @Digits(integer = 10, fraction = 2, message = "Purchase price format is invalid")
     private BigDecimal valorCompra;
 
-    @NotNull(message = "El valor de venta es obligatorio")
-    @DecimalMin(value = "0.00", message = "El valor de venta no puede ser negativo")
-    @Digits(integer = 10, fraction = 2, message = "El valor de venta tiene un formato inválido")
+    @NotNull(message = "Sale price is required")
+    @DecimalMin(value = "0.00", message = "Sale price cannot be negative")
+    @Digits(integer = 10, fraction = 2, message = "Sale price format is invalid")
     private BigDecimal valorVenta;
 
-    @NotNull(message = "El tipo de producto es obligatorio")
+    @NotNull(message = "Product type is required")
     private Long tipoProductoId;
 
     private Long proveedorId;

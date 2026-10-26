@@ -24,8 +24,7 @@ public class UsuarioRepository {
                 FROM usuarios u
                 JOIN roles r ON r.id = u.rol_id
                 LEFT JOIN sedes s ON s.id = u.sede_id
-                WHERE u.active = TRUE
-                ORDER BY u.nombre
+                ORDER BY u.active DESC, u.nombre
                 """, (rs, rowNum) -> map(rs, false));
     }
 

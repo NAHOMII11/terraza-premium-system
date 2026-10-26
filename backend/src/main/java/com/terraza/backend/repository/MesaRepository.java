@@ -33,6 +33,16 @@ public class MesaRepository {
                 """, (rs, rowNum) -> map(rs), id).stream().findFirst();
     }
 
+    public void crearHasta(Long sedeId, int total) {
+        for (int numero = 1; numero <= total; numero++) {
+            jdbc.update("""
+                    INSERT INTO mesas (numero, capacidad, sede_id, estado, active)
+                    VALUES (?, 4, ?, 'DISPONIBLE', TRUE)
+                    ON CONFLICT (sede_id, numero) DO NOTHING
+                    """, numero, sedeId);
+        }
+    }
+
     public int actualizarEstado(Long id, String estado) {
         return jdbc.update("""
                 UPDATE mesas

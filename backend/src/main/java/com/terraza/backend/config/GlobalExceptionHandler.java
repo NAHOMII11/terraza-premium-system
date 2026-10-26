@@ -50,28 +50,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiError> handleDisabled(DisabledException ex, WebRequest request) {
         log.warn("Intento de acceso de un usuario inactivo");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(apiError(HttpStatus.UNAUTHORIZED, "Usuario inactivo", request, null));
+                .body(apiError(HttpStatus.UNAUTHORIZED, "Inactive user", request, null));
     }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ApiError> handleLocked(LockedException ex, WebRequest request) {
         log.warn("Intento de acceso con cuenta bloqueada");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(apiError(HttpStatus.UNAUTHORIZED, "Cuenta bloqueada temporalmente", request, null));
+                .body(apiError(HttpStatus.UNAUTHORIZED, "Account temporarily locked", request, null));
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, WebRequest request) {
-        log.warn("Autenticación rechazada");
+        log.warn("Authentication rejected");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(apiError(HttpStatus.UNAUTHORIZED, "Credenciales inválidas", request, null));
+                .body(apiError(HttpStatus.UNAUTHORIZED, "Invalid credentials", request, null));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
         auditar("ACCESO_DENEGADO", "Acceso denegado");
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(apiError(HttpStatus.FORBIDDEN, "No tiene permisos para esta operación", request, null));
+                .body(apiError(HttpStatus.FORBIDDEN, "You do not have permission for this operation", request, null));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -79,7 +79,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Conflicto de integridad: {}", ex.getMostSpecificCause().getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(apiError(
                 HttpStatus.CONFLICT,
-                "El registro entra en conflicto con datos existentes",
+                "This record conflicts with existing data",
                 request,
                 null));
     }
@@ -87,17 +87,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ApiError> handleDataAccess(DataAccessException ex, WebRequest request) {
         log.error("Error de acceso a datos", ex);
-        auditar("ERROR_INESPERADO", "Error al acceder a los datos");
+        auditar("ERROR_INESPERADO", "Error accessing data");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(apiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error al acceder a los datos", request, null));
+                .body(apiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error accessing data", request, null));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, WebRequest request) {
         log.error("Error no controlado", ex);
-        auditar("ERROR_INESPERADO", "Error interno del servidor");
+        auditar("ERROR_INESPERADO", "Internal server error");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(apiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servidor", request, null));
+                .body(apiError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", request, null));
     }
 
     private void auditar(String operacion, String detalle) {
@@ -117,7 +117,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         Map<String, String> errors = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> errors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-        return ResponseEntity.badRequest().body(apiError(HttpStatus.BAD_REQUEST, "Datos inválidos", request, errors));
+        return ResponseEntity.badRequest().body(apiError(HttpStatus.BAD_REQUEST, "Invalid data", request, errors));
     }
 
     @Override
@@ -127,7 +127,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request) {
         return ResponseEntity.badRequest()
-                .body(apiError(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es válido", request, null));
+                .body(apiError(HttpStatus.BAD_REQUEST, "The request body is not valid", request, null));
     }
 
     @Override
@@ -137,8 +137,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request) {
         String message = "sedeId".equals(ex.getParameterName())
-                ? "El parámetro sedeId es obligatorio"
-                : "Falta el parámetro " + ex.getParameterName();
+                ? "The sedeId parameter is required"
+                : "Missing parameter " + ex.getParameterName();
         return ResponseEntity.badRequest().body(apiError(HttpStatus.BAD_REQUEST, message, request, null));
     }
 
@@ -149,7 +149,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request) {
         return ResponseEntity.badRequest()
-                .body(apiError(HttpStatus.BAD_REQUEST, "Un parámetro tiene un formato inválido", request, null));
+                .body(apiError(HttpStatus.BAD_REQUEST, "A parameter has an invalid format", request, null));
     }
 
     private ApiError apiError(HttpStatus status, String message, WebRequest request, Map<String, String> errors) {

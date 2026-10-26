@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../../api/api';
-import ConfirmDialog from '../../components/ConfirmDialog';
+import PageShell from '../../components/PageShell';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
+import { formatMoney } from '../../lib/format';
+import { downloadCsv, downloadExcel } from '../../lib/export';
+import AppLayout from '../../components/AppLayout';
+import InvoiceView, { type Invoice } from '../../components/InvoiceView';
+import ReportsPanel from '../../components/ReportsPanel';
 
 interface Order {
   id: number;
@@ -11,7 +15,13 @@ interface Order {
   total: number;
 }
 
-type Tab = 'orders' | 'reports';
+type Tab = 'orders' | 'reports' | 'types';
+
+interface ProductType {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+}
 
 interface InventoryRow {
   id: number;
@@ -23,20 +33,26 @@ interface InventoryRow {
 
 export default function Dashboard() {
   useInactivityLogout();
-  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [types, setTypes] = useState<ProductType[]>([]);
+  const [typeModal, setTypeModal] = useState(false);
+  const [editingType, setEditingType] = useState<ProductType | null>(null);
+  const [typeForm, setTypeForm] = useState({ nombre: '', descripcion: '' });
+  const [savingType, setSavingType] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [askLogout, setAskLogout] = useState(false);
 
   const [payModal, setPayModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
   const [amount, setAmount] = useState('');
   const [change, setChange] = useState('');
+  const [payLeft, setPayLeft] = useState(90);
 
   const sedeId = localStorage.getItem('sedeId') || '1';
   const cashierId = localStorage.getItem('usuarioId') || '3';
@@ -46,10 +62,14 @@ export default function Dashboard() {
     Promise.all([
       api.get(`/api/orders?sedeId=${sedeId}`).catch(() => ({ data: [] })),
       api.get(`/api/inventory?sedeId=${sedeId}`).catch(() => ({ data: [] })),
+      api.get(`/api/invoices?sedeId=${sedeId}`).catch(() => ({ data: [] })),
+      api.get('/api/product-types').catch(() => ({ data: [] })),
     ])
-      .then(([rO, rI]) => {
+      .then(([rO, rI, rInv, rT]) => {
         setOrders(Array.isArray(rO.data) ? rO.data : []);
         setInventory(Array.isArray(rI.data) ? rI.data : []);
+        setInvoices(Array.isArray(rInv.data) ? rInv.data : []);
+        setTypes(Array.isArray(rT.data) ? rT.data : []);
       })
       .finally(() => setLoading(false));
   };
@@ -58,14 +78,23 @@ export default function Dashboard() {
     loadData();
   }, [sedeId]);
 
-  const logout = async () => {
-    setAskLogout(false);
-    try {
-      await api.post('/api/auth/logout');
-    } catch {}
-    localStorage.clear();
-    navigate('/login');
-  };
+  useEffect(() => {
+    if (!payModal) return;
+    const started = Date.now();
+    setPayLeft(90);
+    const tick = setInterval(() => {
+      const left = 90 - Math.floor((Date.now() - started) / 1000);
+      if (left <= 0) {
+        clearInterval(tick);
+        setPayModal(false);
+        setSelectedOrder(null);
+        setMessage('Payment timed out. The order remains open.');
+      } else {
+        setPayLeft(left);
+      }
+    }, 250);
+    return () => clearInterval(tick);
+  }, [payModal]);
 
   const openPayment = (order: Order) => {
     setSelectedOrder(order);
@@ -78,6 +107,29 @@ export default function Dashboard() {
   };
 
   const isCard = paymentMethod === 'TARJETA_CREDITO' || paymentMethod === 'TARJETA_DEBITO';
+
+  const openEditType = (t: ProductType) => {
+    setEditingType(t);
+    setTypeForm({ nombre: t.nombre, descripcion: t.descripcion || '' });
+    setTypeModal(true);
+    setError('');
+  };
+
+  const saveType = async () => {
+    if (!editingType) return;
+    setSavingType(true);
+    setError('');
+    try {
+      await api.put(`/api/product-types/${editingType.id}`, typeForm);
+      setMessage('Product type updated');
+      setTypeModal(false);
+      loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Could not save product type');
+    } finally {
+      setSavingType(false);
+    }
+  };
 
   const registerPayment = async () => {
     if (!selectedOrder) return;
@@ -99,6 +151,10 @@ export default function Dashboard() {
       await api.post('/api/pagos', body);
       setMessage(`Payment registered. Order #${selectedOrder.id} closed. Table is now available.`);
       setPayModal(false);
+      try {
+        const { data } = await api.get(`/api/invoices/${selectedOrder.id}`);
+        setInvoice(data);
+      } catch {}
       loadData();
     } catch (err: any) {
       setError(
@@ -119,71 +175,35 @@ export default function Dashboard() {
     return { bg: '#f5f5f5', color: '#616161', label: estado };
   };
 
+  const exportInvoices = (kind: 'csv' | 'excel') => {
+    const headers = ['Invoice', 'Table', 'Waiter', 'Total', 'Closed'];
+    const rows = invoices.map((row) => [
+      row.pedidoId,
+      row.mesaNumero ?? '',
+      row.meseroNombre || '',
+      Number(row.total) || 0,
+      row.fechaCierre || '',
+    ]);
+    const name = `invoices-branch-${sedeId}`;
+    if (kind === 'csv') downloadCsv(name, headers, rows);
+    else downloadExcel(name, headers, rows);
+  };
+
+  const openInvoice = async (id: number) => {
+    try {
+      const { data } = await api.get(`/api/invoices/${id}`);
+      setInvoice(data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Could not load invoice');
+    }
+  };
+
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
-      <header
-        className="sticky top-0 z-40 border-b"
-        style={{ background: 'var(--bar-dark)', borderColor: 'rgba(212,162,76,0.15)' }}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                 stroke="var(--bar-gold)" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M5 3h14l-7 8v10M8 21h8M3 3l6 6M21 3l-6 6" />
-            </svg>
-            <div>
-              <p className="font-display text-white text-lg leading-none">Terraza Premium</p>
-              <p className="text-[10px] uppercase tracking-widest mt-0.5"
-                 style={{ letterSpacing: '0.25em', color: 'var(--bar-gold)' }}>
-                Cashier
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col items-end">
-              <p className="text-white/70 text-xs">{localStorage.getItem('email')}</p>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--bar-gold)' }}>
-                Cashier
-              </p>
-            </div>
-            {localStorage.getItem('rol') === 'ADMIN' && (
-              <button
-                onClick={() => navigate('/admin/dashboard')}
-                className="text-white/60 hover:text-white text-sm transition-colors border rounded-md px-3 py-1.5"
-                style={{ borderColor: 'rgba(212,162,76,0.3)' }}
-              >
-                Admin
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/mesera/inventario')}
-              className="text-white/60 hover:text-white text-sm transition-colors border rounded-md px-3 py-1.5"
-              style={{ borderColor: 'rgba(212,162,76,0.3)' }}
-            >
-              Inventory
-            </button>
-            <button
-              onClick={() => setAskLogout(true)}
-              className="text-white/60 hover:text-white text-sm transition-colors border rounded-md px-3 py-1.5"
-              style={{ borderColor: 'rgba(212,162,76,0.3)' }}
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <header className="mb-8">
-          <p className="text-xs uppercase tracking-widest text-gray-500 mb-2"
-             style={{ letterSpacing: '0.15em' }}>
-            Cashier panel
-          </p>
-          <h1 className="font-display text-4xl" style={{ color: 'var(--bar-dark)' }}>
-            Welcome, Cashier
-          </h1>
-        </header>
+    <PageShell>
+    <AppLayout
+      eyebrow="Welcome to Terraza Premium"
+      title="Cashier"
+    >
 
         {message && (
           <div className="mb-6 px-4 py-3 rounded-lg text-sm border-l-4"
@@ -195,6 +215,7 @@ export default function Dashboard() {
         <div className="flex gap-2 mb-6">
           {([
             { key: 'orders', label: `Orders (${orders.length})` },
+            { key: 'types', label: `Types (${types.length})` },
             { key: 'reports', label: 'Reports' },
           ] as { key: Tab; label: string }[]).map((t) => (
             <button
@@ -202,9 +223,9 @@ export default function Dashboard() {
               onClick={() => setTab(t.key)}
               className="px-4 py-2 rounded-lg border text-sm transition-all"
               style={{
-                background: tab === t.key ? 'var(--bar-dark)' : 'white',
-                color: tab === t.key ? 'var(--bar-gold)' : '#555',
-                borderColor: tab === t.key ? 'var(--bar-dark)' : 'rgba(0,0,0,0.1)',
+                  background: tab === t.key ? 'var(--bar-gold)' : 'transparent',
+                  color: tab === t.key ? '#07121c' : '#f7f2e9',
+                  borderColor: 'rgba(146, 98, 8,0.35)',
               }}
             >
               {t.label}
@@ -215,8 +236,7 @@ export default function Dashboard() {
         {loading ? (
           <p className="text-gray-400">Loading data...</p>
         ) : (
-          <div className="bg-white rounded-xl border overflow-hidden"
-               style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+          <div className="panel-card rounded-xl overflow-hidden">
             {tab === 'orders' && (
               orders.length === 0 ? (
                 <div className="text-center py-16">
@@ -248,7 +268,7 @@ export default function Dashboard() {
                           </td>
                           <td className="px-6 py-4 text-right font-display"
                               style={{ color: 'var(--bar-amber)' }}>
-                            ${o.total?.toLocaleString()}
+                            {formatMoney(o.total)}
                           </td>
                           <td className="px-6 py-4 text-right">
                             {o.estado === 'ABIERTO' && (
@@ -269,37 +289,72 @@ export default function Dashboard() {
               )
             )}
 
+            {tab === 'types' && (
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Name</th>
+                    <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Description</th>
+                    <th className="text-right px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {types.map((t) => (
+                    <tr key={t.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                      <td className="px-6 py-4 font-medium">{t.nombre}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{t.descripcion || '—'}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button type="button" onClick={() => openEditType(t)}
+                          className="text-sm px-3 py-1.5 rounded-lg border">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
             {tab === 'reports' && (
               <div className="p-6 space-y-8">
+                <ReportsPanel sedeId={sedeId} allowAllBranches={false} />
                 <div>
                   <h3 className="font-display text-xl mb-1" style={{ color: 'var(--bar-dark)' }}>
                     Sales pending collection
                   </h3>
-                  <p className="text-sm text-gray-500 mb-4">Open orders at this branch.</p>
+                  <p className="text-sm text-gray-500 mb-4">Open orders.</p>
                   <p className="font-display text-3xl" style={{ color: 'var(--bar-amber)' }}>
-                    ${orders.reduce((s, o) => s + (Number(o.total) || 0), 0).toLocaleString()}
+                    {formatMoney(orders.reduce((s, o) => s + (Number(o.total) || 0), 0))}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">{orders.length} open order(s)</p>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportInvoices('csv')}>Invoices CSV</button>
+                  <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportInvoices('excel')}>Invoices Excel</button>
+                </div>
                 <div>
                   <h3 className="font-display text-xl mb-3" style={{ color: 'var(--bar-dark)' }}>
-                    Inventory · this branch
+                    Closed invoices
                   </h3>
-                  {inventory.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No inventory rows.</p>
+                  {invoices.length === 0 ? (
+                    <p className="text-gray-400 text-sm">No invoices yet.</p>
                   ) : (
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Product</th>
-                          <th className="text-right px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Units</th>
+                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Invoice</th>
+                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Table</th>
+                          <th className="text-right px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Total</th>
+                          <th className="text-right px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {inventory.map((row) => (
-                          <tr key={row.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
-                            <td className="px-4 py-2">{row.productoNombre || row.nombreProducto}</td>
-                            <td className="px-4 py-2 text-right">{row.cantidad ?? row.stock ?? 0}</td>
+                        {invoices.map((row) => (
+                          <tr key={row.pedidoId} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                            <td className="px-4 py-2">#{row.pedidoId}</td>
+                            <td className="px-4 py-2">Table {row.mesaNumero ?? '—'}</td>
+                            <td className="px-4 py-2 text-right">{formatMoney(row.total)}</td>
+                            <td className="px-4 py-2 text-right">
+                              <button type="button" className="text-sm px-3 py-1.5 rounded-lg border" onClick={() => openInvoice(row.pedidoId)}>View</button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -310,21 +365,25 @@ export default function Dashboard() {
             )}
           </div>
         )}
-      </main>
 
       {payModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="font-display text-2xl mb-4" style={{ color: 'var(--bar-dark)' }}>
-              Register payment
-            </h3>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <h3 className="font-display text-2xl" style={{ color: 'var(--bar-dark)' }}>
+                Register payment
+              </h3>
+              <p className="text-sm font-medium" style={{ color: payLeft <= 15 ? '#b42318' : '#926208' }}>
+                {payLeft}s
+              </p>
+            </div>
 
             <div className="mb-4 p-4 rounded-lg" style={{ background: 'var(--bar-cream)' }}>
               <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">Order</p>
               <p className="font-medium">#{selectedOrder.id} · Table {selectedOrder.mesaId}</p>
               <p className="text-xs uppercase tracking-widest text-gray-500 mt-3 mb-1">Total</p>
               <p className="font-display text-3xl" style={{ color: 'var(--bar-amber)' }}>
-                ${selectedOrder.total?.toLocaleString()}
+                {formatMoney(selectedOrder.total)}
               </p>
             </div>
 
@@ -353,15 +412,10 @@ export default function Dashboard() {
                 style={{ borderColor: 'rgba(0,0,0,0.15)' }}
               >
                 <option value="EFECTIVO">Cash</option>
-                <option value="TARJETA_CREDITO">Credit card (single payment)</option>
+                <option value="TARJETA_CREDITO">Credit card</option>
                 <option value="TARJETA_DEBITO">Debit card</option>
               </select>
             </label>
-            {isCard && (
-              <p className="text-xs text-gray-500 mb-3">
-                Card charges the order total in one payment. Installments are not used.
-              </p>
-            )}
 
             <label className="block mb-3">
               <span className="text-xs font-medium uppercase tracking-widest text-gray-600">
@@ -376,27 +430,24 @@ export default function Dashboard() {
                   const c = Number(e.target.value) - selectedOrder.total;
                   setChange(String(c > 0 ? c : 0));
                 }}
-                className="mt-1 w-full px-3 py-2 rounded-lg border bg-white"
+                className="mt-1 w-full px-3 py-2 rounded-lg border"
                 style={{
-                  borderColor: 'rgba(0,0,0,0.15)',
-                  background: isCard ? '#f9f9f9' : 'white',
+                  borderColor: 'rgba(146, 98, 8,0.35)',
+                  background: '#071525',
+                  color: '#f7f2e9',
                 }}
               />
             </label>
 
             {paymentMethod === 'EFECTIVO' && (
-              <label className="block mb-4">
-                <span className="text-xs font-medium uppercase tracking-widest text-gray-600">
+              <div className="mb-4 p-4 rounded-lg" style={{ background: '#071525', border: '1px solid rgba(146, 98, 8,0.35)' }}>
+                <p className="text-xs font-medium uppercase tracking-widest" style={{ color: '#a7afbc' }}>
                   Change
-                </span>
-                <input
-                  type="number"
-                  value={change}
-                  readOnly
-                  className="mt-1 w-full px-3 py-2 rounded-lg border"
-                  style={{ borderColor: 'rgba(0,0,0,0.15)', background: '#f9f9f9' }}
-                />
-              </label>
+                </p>
+                <p className="text-base mt-1" style={{ color: '#f7f2e9' }}>
+                  {Math.round(Number(change) || 0).toLocaleString('en-US')}
+                </p>
+              </div>
             )}
 
             <div className="flex gap-2 mt-6">
@@ -418,14 +469,39 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      <ConfirmDialog
-        open={askLogout}
-        title="Sign out"
-        message="Close this session?"
-        confirmLabel="Sign out"
-        onConfirm={logout}
-        onCancel={() => setAskLogout(false)}
-      />
-    </div>
+      {typeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="font-display text-2xl mb-4" style={{ color: 'var(--bar-dark)' }}>
+              Edit product type
+            </h3>
+            {error && (
+              <div className="mb-3 px-3 py-2 rounded-lg text-sm" style={{ background: '#fef2f2', color: '#991b1b' }}>
+                {error}
+              </div>
+            )}
+            <label className="block mb-3">
+              <span className="text-xs uppercase tracking-widest text-gray-600">Name</span>
+              <input className="mt-1 w-full px-3 py-2 rounded-lg border bg-white text-sm" value={typeForm.nombre}
+                onChange={(e) => setTypeForm({ ...typeForm, nombre: e.target.value })} />
+            </label>
+            <label className="block mb-4">
+              <span className="text-xs uppercase tracking-widest text-gray-600">Description</span>
+              <input className="mt-1 w-full px-3 py-2 rounded-lg border bg-white text-sm" value={typeForm.descripcion}
+                onChange={(e) => setTypeForm({ ...typeForm, descripcion: e.target.value })} />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setTypeModal(false)} className="px-4 py-2 rounded-lg border text-sm">Cancel</button>
+              <button type="button" disabled={savingType} onClick={saveType}
+                className="px-4 py-2 rounded-lg text-white text-sm" style={{ background: 'var(--bar-dark)' }}>
+                {savingType ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {invoice && <InvoiceView invoice={invoice} onClose={() => setInvoice(null)} />}
+    </AppLayout>
+    </PageShell>
   );
 }

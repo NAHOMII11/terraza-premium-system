@@ -13,24 +13,24 @@ public class SupplierDTO {
 
     private Long id;
 
-    @NotBlank(message = "El nombre es obligatorio")
-    @Size(max = 150, message = "El nombre es demasiado largo")
+    @NotBlank(message = "Name is required")
+    @Size(max = 150, message = "Name is too long")
     private String nombre;
 
-    @Size(max = 30, message = "El NIT es demasiado largo")
+    @Size(max = 30, message = "NIT is too long")
     private String nit;
 
-    @Size(max = 100, message = "El contacto es demasiado largo")
+    @Size(max = 100, message = "Contact name is too long")
     private String contacto;
 
-    @Size(max = 30, message = "El teléfono es demasiado largo")
+    @Size(max = 30, message = "Phone number is too long")
     private String telefono;
 
-    @Email(message = "El correo no es válido")
-    @Size(max = 150, message = "El correo es demasiado largo")
+    @Email(message = "Email is not valid")
+    @Size(max = 150, message = "Email is too long")
     private String email;
 
-    @Size(max = 255, message = "La dirección es demasiado larga")
+    @Size(max = 255, message = "Address is too long")
     private String direccion;
 
     public static SupplierDTO from(Supplier supplier) {

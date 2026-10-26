@@ -17,7 +17,7 @@ public class InventoryRepository {
     private final JdbcTemplate jdbc;
 
     public List<Inventory> listarPorSede(Long sedeId) {
-        return jdbc.query(sqlInventario() + " WHERE i.sede_id = ? ORDER BY p.nombre",
+        return jdbc.query(sqlInventario() + " WHERE i.sede_id = ? ORDER BY p.codigo, p.nombre",
                 (rs, rowNum) -> map(rs), sedeId);
     }
 

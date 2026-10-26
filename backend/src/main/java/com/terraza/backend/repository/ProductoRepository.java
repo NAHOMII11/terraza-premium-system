@@ -26,7 +26,7 @@ public class ProductoRepository {
                 JOIN tipos_producto t ON t.id = p.tipo_producto_id
                 LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
                 WHERE p.active = TRUE
-                ORDER BY p.nombre
+                ORDER BY p.codigo, p.nombre
                 """, (rs, rowNum) -> map(rs));
     }
 

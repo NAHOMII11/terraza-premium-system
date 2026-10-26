@@ -64,19 +64,22 @@ public class SecurityConfig {
                         .requestMatchers("/api/suppliers", "/api/suppliers/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/proveedores").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.POST, "/api/pagos").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers(HttpMethod.GET, "/api/product-types").hasAnyRole("ADMIN", "CAJERO", "MESERO")
+                        .requestMatchers(HttpMethod.PUT, "/api/product-types/*").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers("/api/product-types", "/api/product-types/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/payments").hasAnyRole("ADMIN", "CAJERO")
-                        .requestMatchers(HttpMethod.GET, "/api/invoices/*").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers(HttpMethod.GET, "/api/invoices", "/api/invoices/*").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers(HttpMethod.GET, "/api/reports", "/api/reports/**").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
-                                writeJson(response, 401, "Unauthorized", "Autenticación requerida"))
+                                writeJson(response, 401, "Unauthorized", "Authentication required"))
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             auditoriaService.registrar(
                                     "ACCESO_DENEGADO",
                                     "Sin permiso para " + request.getMethod() + " " + request.getRequestURI());
-                            writeJson(response, 403, "Forbidden", "No tiene permisos para esta operación");
+                            writeJson(response, 403, "Forbidden", "You do not have permission for this operation");
                         }))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -103,16 +106,16 @@ public class SecurityConfig {
 
     private void verificarEstado(UserDetails user) {
         if (!user.isEnabled()) {
-            throw new DisabledException("Usuario inactivo");
+            throw new DisabledException("Inactive user");
         }
         if (!user.isAccountNonLocked()) {
-            throw new LockedException("Cuenta bloqueada temporalmente");
+            throw new LockedException("Account temporarily locked");
         }
         if (!user.isAccountNonExpired()) {
-            throw new AccountExpiredException("La cuenta está vencida");
+            throw new AccountExpiredException("The account has expired");
         }
         if (!user.isCredentialsNonExpired()) {
-            throw new CredentialsExpiredException("Las credenciales están vencidas");
+            throw new CredentialsExpiredException("Credentials have expired");
         }
     }
 

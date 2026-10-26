@@ -9,13 +9,13 @@ import lombok.Setter;
 @Setter
 public class CrearInventoryDTO {
 
-    @NotNull(message = "La sede es obligatoria")
+    @NotNull(message = "Branch is required")
     private Long sedeId;
 
-    @NotNull(message = "El producto es obligatorio")
+    @NotNull(message = "Product is required")
     private Long productoId;
 
-    @NotNull(message = "El stock es obligatorio")
-    @Min(value = 0, message = "El stock no puede ser negativo")
+    @NotNull(message = "Stock is required")
+    @Min(value = 0, message = "Stock cannot be negative")
     private Integer stock;
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
-import Navbar from '../components/Navbar';
+import PageShell from '../components/PageShell';
+import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
+import { currentBranch, formatMoney } from '../lib/format';
 
 interface Pedido {
   id: number;
@@ -56,33 +58,21 @@ export default function PedidosActivos() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
-      <Navbar />
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <header className="mb-10 flex flex-wrap justify-between items-end gap-4">
-          <div>
-            <p
-              className="text-xs uppercase tracking-widest text-gray-500 mb-2"
-              style={{ letterSpacing: '0.15em' }}
-            >
-              Sede {sedeId}
-            </p>
-            <h1
-              className="font-display text-4xl"
-              style={{ color: 'var(--bar-dark)' }}
-            >
-              Pedidos activos
-            </h1>
-          </div>
+    <PageShell>
+    <AppLayout
+      eyebrow="Welcome to Terraza Premium"
+      title="Active orders"
+      subtitle={`Branch · ${currentBranch()}`}
+    >
+          <div className="mb-8 flex justify-end">
           <button
             onClick={() => navigate('/mesera/mesas')}
-            className="text-sm px-4 py-2 rounded-lg text-white transition-all hover:translate-y-[-1px]"
-            style={{ background: 'var(--bar-dark)' }}
+            className="text-sm px-4 py-2 rounded-lg transition-all"
+            style={{ background: '#926208', color: '#071525' }}
           >
             + New order
           </button>
-        </header>
+          </div>
 
         {loading ? (
           <p className="text-gray-400">Loading orders...</p>
@@ -97,7 +87,7 @@ export default function PedidosActivos() {
             <button
               onClick={() => navigate('/mesera/mesas')}
               className="text-sm px-4 py-2 rounded-lg text-white"
-              style={{ background: 'var(--bar-dark)' }}
+              style={{ background: '#926208', color: '#071525' }}
             >
               Go to tables
             </button>
@@ -109,13 +99,13 @@ export default function PedidosActivos() {
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-xl border p-5"
-                  style={{ borderColor: 'rgba(0,0,0,0.08)' }}
+                  className="rounded-xl border p-5"
+                  style={{ background: '#10243d', borderColor: 'rgba(146, 98, 8,0.22)' }}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <p
                       className="font-display text-2xl"
-                      style={{ color: 'var(--bar-dark)' }}
+                      style={{ color: '#f7f2e9' }}
                     >
                       #{p.id}
                     </p>
@@ -140,7 +130,7 @@ export default function PedidosActivos() {
                         className="font-display text-lg"
                         style={{ color: 'var(--bar-gold)' }}
                       >
-                        ${p.total?.toLocaleString()}
+                        {formatMoney(p.total)}
                       </span>
                     </div>
                   </div>
@@ -149,7 +139,7 @@ export default function PedidosActivos() {
             })}
           </div>
         )}
-      </main>
-    </div>
+    </AppLayout>
+    </PageShell>
   );
 }

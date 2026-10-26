@@ -53,13 +53,13 @@ public class PedidoService {
     @Transactional
     public Pedido actualizar(Long id, PedidoRequest request, UsuarioPrincipal principal) {
         Pedido pedido = pedidoRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Order not found"));
         if (!Pedido.ABIERTO.equals(pedido.getEstado())) {
-            throw new BusinessException(HttpStatus.CONFLICT, "Solo se pueden modificar pedidos abiertos");
+            throw new BusinessException(HttpStatus.CONFLICT, "Only open orders can be edited");
         }
         validarAccesoSede(principal, pedido.getSedeId());
         if (!pedido.getSedeId().equals(request.getSedeId())) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "No se puede cambiar la sede de un pedido abierto");
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "The branch of an open order cannot be changed");
         }
         validarMesa(pedido.getSedeId(), request.getMesaId());
         List<DetallePedido> detalles = resolverDetalles(request.getDetalles());
@@ -67,7 +67,7 @@ public class PedidoService {
         pedidoRepository.reemplazarDetalles(id, detalles);
         int filas = pedidoRepository.actualizarCabecera(id, request.getMesaId(), total(detalles));
         if (filas == 0) {
-            throw new BusinessException(HttpStatus.CONFLICT, "El pedido ya no está abierto");
+            throw new BusinessException(HttpStatus.CONFLICT, "The order is no longer open");
         }
         auditoriaService.registrar("EDITAR_PEDIDO", "Pedido abierto actualizado: " + id);
         return obtener(id);
@@ -76,14 +76,14 @@ public class PedidoService {
     public List<Pedido> listarActivos(Long sedeId, UsuarioPrincipal principal) {
         validarAccesoSede(principal, sedeId);
         if (pedidoRepository.findActivoDeSede(sedeId).isEmpty()) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "Sede no encontrada");
+            throw new BusinessException(HttpStatus.NOT_FOUND, "Branch not found");
         }
         return pedidoRepository.findAbiertosBySede(sedeId);
     }
 
     private Pedido obtener(Long id) {
         return pedidoRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Order not found"));
     }
 
     private void validarAccesoSede(UsuarioPrincipal principal, Long sedeId) {
@@ -92,15 +92,15 @@ public class PedidoService {
         }
         Long sedeUsuario = principal.getUsuario().getSedeId();
         if (sedeUsuario == null || !sedeUsuario.equals(sedeId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "No puede operar pedidos de otra sede");
+            throw new BusinessException(HttpStatus.FORBIDDEN, "You cannot operate orders from another branch");
         }
     }
 
     private void validarSedeActiva(Long sedeId) {
         Boolean activa = pedidoRepository.findActivoDeSede(sedeId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Sede no encontrada"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Branch not found"));
         if (!activa) {
-            throw new BusinessException(HttpStatus.CONFLICT, "La sede está inactiva");
+            throw new BusinessException(HttpStatus.CONFLICT, "The branch is inactive");
         }
     }
 
@@ -109,7 +109,7 @@ public class PedidoService {
             return;
         }
         if (!pedidoRepository.mesaPerteneceASede(mesaId, sedeId)) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "La mesa no pertenece a la sede indicada");
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "The table does not belong to the selected branch");
         }
     }
 
@@ -119,7 +119,7 @@ public class PedidoService {
             cantidades.merge(item.getProductoId(), item.getCantidad(), (actual, nueva) -> {
                 int suma = actual + nueva;
                 if (suma > CANTIDAD_MAXIMA) {
-                    throw new BusinessException(HttpStatus.BAD_REQUEST, "La cantidad supera el máximo permitido");
+                    throw new BusinessException(HttpStatus.BAD_REQUEST, "Quantity exceeds the allowed maximum");
                 }
                 return suma;
             });
@@ -130,7 +130,7 @@ public class PedidoService {
             Producto producto = productoRepository.findActivoById(entry.getKey())
                     .orElseThrow(() -> new BusinessException(
                             HttpStatus.BAD_REQUEST,
-                            "El producto " + entry.getKey() + " no existe o está inactivo"));
+                            "Product " + entry.getKey() + " does not exist or is inactive"));
             DetallePedido detalle = new DetallePedido();
             detalle.setProductoId(producto.getId());
             detalle.setProductoNombre(producto.getNombre());
@@ -172,11 +172,11 @@ public class PedidoService {
                                 + nombres.getOrDefault(productoId, String.valueOf(productoId)));
             }
             if (resultante > Integer.MAX_VALUE) {
-                throw new BusinessException(HttpStatus.CONFLICT, "El stock resultante no es válido");
+                throw new BusinessException(HttpStatus.CONFLICT, "The resulting stock is not valid");
             }
             int filas = pedidoRepository.actualizarStock(sedeId, productoId, (int) resultante);
             if (filas == 0) {
-                throw new BusinessException(HttpStatus.CONFLICT, "No fue posible actualizar el inventario");
+                throw new BusinessException(HttpStatus.CONFLICT, "Could not update inventory");
             }
         }
     }

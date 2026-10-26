@@ -8,6 +8,6 @@ import lombok.Setter;
 @Setter
 public class EstadoActivoRequest {
 
-    @NotNull(message = "El estado activo es obligatorio")
+    @NotNull(message = "Active status is required")
     private Boolean activo;
 }

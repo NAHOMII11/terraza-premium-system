@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class ActualizarStockDTO {
 
-    @NotNull(message = "El stock es obligatorio")
-    @Min(value = 0, message = "El stock no puede ser negativo")
+    @NotNull(message = "Stock is required")
+    @Min(value = 0, message = "Stock cannot be negative")
     private Integer stock;
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/api';
 import ConfirmDialog from './ConfirmDialog';
+import BranchSwitcher from './BranchSwitcher';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function Navbar() {
     <>
     <header
       className="sticky top-0 z-40 border-b"
-      style={{ background: 'var(--bar-dark)', borderColor: 'rgba(212,162,76,0.15)' }}
+      style={{ background: 'var(--bar-dark)', borderColor: 'rgba(146, 98, 8,0.15)' }}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
         <button
@@ -70,7 +71,7 @@ export default function Navbar() {
                 className="px-4 py-2 text-sm rounded-md transition-colors"
                 style={{
                   color: active ? 'var(--bar-gold)' : 'rgba(255,255,255,0.65)',
-                  background: active ? 'rgba(212,162,76,0.1)' : 'transparent',
+                  background: active ? 'rgba(146, 98, 8,0.1)' : 'transparent',
                 }}
               >
                 {item.label}
@@ -80,6 +81,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <BranchSwitcher />
           <div className="hidden md:flex flex-col items-end">
             <p className="text-white/70 text-xs">{localStorage.getItem('email')}</p>
             <p className="text-[10px] uppercase tracking-widest"
@@ -90,7 +92,7 @@ export default function Navbar() {
           <button
             onClick={() => setAskLogout(true)}
             className="text-white/60 hover:text-white text-sm transition-colors border rounded-md px-3 py-1.5"
-            style={{ borderColor: 'rgba(212,162,76,0.3)' }}
+            style={{ borderColor: 'rgba(146, 98, 8,0.3)' }}
           >
             Sign out
           </button>
@@ -98,7 +100,7 @@ export default function Navbar() {
       </div>
 
       <nav className="md:hidden flex border-t overflow-x-auto"
-           style={{ borderColor: 'rgba(212,162,76,0.15)' }}>
+           style={{ borderColor: 'rgba(146, 98, 8,0.15)' }}>
         {items.map((item) => {
           const active = location.pathname.startsWith(item.path);
           return (

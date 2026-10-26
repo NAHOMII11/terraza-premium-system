@@ -2,20 +2,98 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap');
 
 :root {
-  --bar-dark: #0c2340;
-  --bar-green: #163a5f;
-  --bar-gold: #d4a24c;
-  --bar-amber: #c97b2e;
-  --bar-cream: #f5efe4;
+  --bar-ink: #071525;
+  --bar-dark: #071525;
+  --bar-panel: #10243d;
+  --bar-green: #10243d;
+  --bar-gold: #926208;
+  --bar-gold-soft: #e4d3a8;
+  --bar-amber: #926208;
+  --bar-cream: #f7f2e9;
   --bar-red: #8b2c2c;
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: var(--bar-cream);
-  color: #1a1a1a;
+  background:
+    radial-gradient(1100px 480px at 88% -8%, rgba(146, 98, 8, 0.16), transparent 55%),
+    #071525;
+  color: #f7f2e9;
 }
 
 .font-display {
   font-family: 'Playfair Display', Georgia, serif;
+}
+
+.panel-card {
+  background: #10243d;
+  border: 1px solid rgba(141, 98, 18, 0.22);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.gold-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--bar-gold), transparent);
+}
+
+.app-surface {
+  background: transparent;
+  color: #f7f2e9;
+}
+
+.app-surface h1,
+.app-surface h2,
+.app-surface h3,
+.app-surface .font-display {
+  color: #f7f2e9;
+}
+
+.app-surface .text-gray-800,
+.app-surface .text-gray-700,
+.app-surface .font-medium {
+  color: #f7f2e9;
+}
+
+.app-surface .text-gray-600,
+.app-surface .text-gray-500,
+.app-surface .text-gray-400 {
+  color: #a7afbc;
+}
+
+.app-surface .bg-white {
+  background: #10243d !important;
+}
+
+.app-surface .bg-gray-50 {
+  background: #0c1c30 !important;
+}
+
+.app-surface input,
+.app-surface select,
+.app-surface textarea {
+  background: #071525;
+  color: #f7f2e9;
+  border-color: rgba(146, 98, 8, 0.35);
+}
+
+.app-surface input::placeholder {
+  color: rgba(247, 242, 233, 0.45);
+}
+
+.app-surface table th {
+  color: var(--bar-gold);
+}
+
+.app-surface table td {
+  color: #f7f2e9;
+}
+
+.app-surface option {
+  background: #10243d;
+  color: #f7f2e9;
+}
+
+.app-surface tr:hover,
+.app-surface .hover\:bg-gray-50:hover {
+  background: rgba(146, 98, 8, 0.06) !important;
 }

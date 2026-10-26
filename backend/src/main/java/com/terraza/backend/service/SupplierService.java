@@ -27,7 +27,7 @@ public class SupplierService {
         String nombre = request.getNombre().trim();
         String nit = limpiar(request.getNit());
         if (nit != null && supplierRepository.existeNit(nit)) {
-            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un proveedor con ese NIT");
+            throw new BusinessException(HttpStatus.CONFLICT, "A supplier with that NIT already exists");
         }
         Long id = supplierRepository.insertar(
                 nombre,
@@ -38,17 +38,17 @@ public class SupplierService {
                 limpiar(request.getDireccion()));
         auditoriaService.registrar("CREAR_PROVEEDOR", "Proveedor creado: " + nombre);
         return SupplierDTO.from(supplierRepository.buscarPorId(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Proveedor no encontrado")));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found")));
     }
 
     @Transactional
     public SupplierDTO actualizar(Long id, SupplierDTO request) {
         supplierRepository.buscarPorId(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Proveedor no encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found"));
         String nombre = request.getNombre().trim();
         String nit = limpiar(request.getNit());
         if (nit != null && supplierRepository.existeNitEnOtra(nit, id)) {
-            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un proveedor con ese NIT");
+            throw new BusinessException(HttpStatus.CONFLICT, "A supplier with that NIT already exists");
         }
         if (supplierRepository.actualizar(
                 id,
@@ -58,11 +58,11 @@ public class SupplierService {
                 limpiar(request.getTelefono()),
                 limpiar(request.getEmail()),
                 limpiar(request.getDireccion())) == 0) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "Proveedor no encontrado");
+            throw new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found");
         }
         auditoriaService.registrar("EDITAR_PROVEEDOR", "Proveedor actualizado: " + nombre);
         return SupplierDTO.from(supplierRepository.buscarPorId(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Proveedor no encontrado")));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found")));
     }
 
     private String limpiar(String valor) {

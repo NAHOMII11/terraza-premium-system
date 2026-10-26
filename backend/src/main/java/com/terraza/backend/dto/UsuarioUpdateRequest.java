@@ -11,21 +11,21 @@ import lombok.Setter;
 @Setter
 public class UsuarioUpdateRequest {
 
-    @NotBlank(message = "El nombre es obligatorio")
-    @Size(max = 150, message = "El nombre es demasiado largo")
+    @NotBlank(message = "Name is required")
+    @Size(max = 150, message = "Name is too long")
     private String nombre;
 
-    @NotBlank(message = "El email es obligatorio")
-    @Email(message = "El email no es válido")
-    @Size(max = 150, message = "El email es demasiado largo")
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email is not valid")
+    @Size(max = 150, message = "Email is too long")
     private String email;
 
-    @Size(min = 8, max = 72, message = "La contraseña debe tener entre 8 y 72 caracteres")
+    @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
     private String password;
 
-    @NotNull(message = "El rol es obligatorio")
+    @NotNull(message = "Role is required")
     private Long rolId;
 
-    @NotNull(message = "La sede es obligatoria")
+    @NotNull(message = "Branch is required")
     private Long sedeId;
 }

@@ -39,7 +39,7 @@ public class UsuarioService {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         validarRolYSede(request.getRolId(), request.getSedeId());
         if (usuarioRepository.existeEmail(email)) {
-            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un usuario con ese email");
+            throw new BusinessException(HttpStatus.CONFLICT, "A user with that email already exists");
         }
 
         Long id = usuarioRepository.insertar(
@@ -55,13 +55,13 @@ public class UsuarioService {
     @Transactional
     public UsuarioDTO actualizar(Long id, UsuarioUpdateRequest request) {
         if (usuarioRepository.findById(id).isEmpty()) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
+            throw new BusinessException(HttpStatus.NOT_FOUND, "User not found");
         }
         String nombre = request.getNombre().trim();
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         validarRolYSede(request.getRolId(), request.getSedeId());
         if (usuarioRepository.existeEmailEnOtro(email, id)) {
-            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un usuario con ese email");
+            throw new BusinessException(HttpStatus.CONFLICT, "A user with that email already exists");
         }
 
         usuarioRepository.actualizar(id, nombre, email, request.getRolId(), request.getSedeId());
@@ -75,9 +75,9 @@ public class UsuarioService {
     @Transactional
     public UsuarioDTO cambiarEstado(Long id, boolean activo) {
         Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "User not found"));
         if (!activo && id.equals(actorId())) {
-            throw new BusinessException(HttpStatus.CONFLICT, "No puede desactivar su propio usuario");
+            throw new BusinessException(HttpStatus.CONFLICT, "You cannot deactivate your own account");
         }
         usuarioRepository.actualizarActivo(id, activo);
         auditoriaService.registrar(
@@ -90,14 +90,14 @@ public class UsuarioService {
     private UsuarioDTO obtener(Long id) {
         return usuarioRepository.findById(id)
                 .map(UsuarioDTO::from)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     private void validarRolYSede(Long rolId, Long sedeId) {
         usuarioRepository.findRolActivo(rolId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST, "El rol no existe o está inactivo"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST, "El rol does not exist or is inactive"));
         if (!sedeRepository.existeActiva(sedeId)) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "La sede no existe o está inactiva");
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "The branch does not exist or is inactive");
         }
     }
 

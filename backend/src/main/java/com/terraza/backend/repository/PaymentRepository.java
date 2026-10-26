@@ -43,6 +43,20 @@ public class PaymentRepository {
                 """, cajeroId, pedidoId);
     }
 
+    public List<InvoiceDTO> listarFacturas(Long sedeId) {
+        return jdbc.query("""
+                SELECT p.id AS pedido_id, p.sede_id, s.nombre AS sede_nombre, p.mesa_id,
+                       me.numero AS mesa_numero, u.nombre AS mesero_nombre, p.estado, p.total,
+                       p.fecha_apertura, p.fecha_cierre
+                FROM pedidos p
+                JOIN sedes s ON s.id = p.sede_id
+                JOIN usuarios u ON u.id = p.mesero_id
+                LEFT JOIN mesas me ON me.id = p.mesa_id
+                WHERE p.sede_id = ? AND p.estado = 'CERRADO'
+                ORDER BY p.fecha_cierre DESC NULLS LAST, p.id DESC
+                """, (rs, rowNum) -> mapFactura(rs), sedeId);
+    }
+
     public Optional<InvoiceDTO> buscarFactura(Long pedidoId) {
         return jdbc.query("""
                 SELECT p.id AS pedido_id, p.sede_id, s.nombre AS sede_nombre, p.mesa_id,

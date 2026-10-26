@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/api';
-import Navbar from '../components/Navbar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageShell from '../components/PageShell';
+import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { Mesa } from '../types';
+import { currentBranch } from '../lib/format';
 
 export default function Mesas() {
   useInactivityLogout();
@@ -42,17 +44,17 @@ export default function Mesas() {
   const statusConfig = (estado: string) => {
     if (isOccupied(estado)) {
       return {
-        bg: '#ffebee',
-        border: '#ef9a9a',
-        text: '#b71c1c',
+        bg: '#10243d',
+        border: 'rgba(180,80,80,0.55)',
+        text: '#f7f2e9',
         dot: '#ef5350',
         label: 'Occupied',
       };
     }
     return {
-      bg: '#e8f5e9',
-      border: '#a5d6a7',
-      text: '#1b5e20',
+      bg: '#10243d',
+      border: 'rgba(146, 98, 8,0.4)',
+      text: '#f7f2e9',
       dot: '#4caf50',
       label: 'Available',
     };
@@ -80,31 +82,19 @@ export default function Mesas() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
-      <Navbar />
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <header className="mb-10 flex flex-wrap justify-between items-end gap-4">
-          <div>
-            <p
-              className="text-xs uppercase tracking-widest text-gray-500 mb-2"
-              style={{ letterSpacing: '0.15em' }}
-            >
-              Floor · Branch {sedeId}
-            </p>
-            <h1
-              className="font-display text-4xl"
-              style={{ color: 'var(--bar-dark)' }}
-            >
-              Table status
-            </h1>
-          </div>
+    <PageShell>
+    <AppLayout
+      eyebrow="Welcome to Terraza Premium"
+      title="Table status"
+      subtitle={`Branch · ${currentBranch()}`}
+    >
+          <div className="flex flex-wrap justify-end gap-6 mb-8">
           <div className="flex gap-6">
             <div>
               <p className="text-xs uppercase tracking-widest text-gray-500">
                 Available
               </p>
-              <p className="font-display text-3xl" style={{ color: '#1b5e20' }}>
+              <p className="font-display text-3xl" style={{ color: '#926208' }}>
                 {available}
               </p>
             </div>
@@ -120,7 +110,7 @@ export default function Mesas() {
               </p>
             </div>
           </div>
-        </header>
+          </div>
 
         {message && (
           <div className="mb-6 px-4 py-3 rounded-lg text-sm border-l-4"
@@ -218,7 +208,6 @@ export default function Mesas() {
             })}
           </div>
         )}
-      </main>
       <ConfirmDialog
         open={!!releaseTarget}
         title="Release table"
@@ -227,6 +216,7 @@ export default function Mesas() {
         onConfirm={releaseTable}
         onCancel={() => setReleaseTarget(null)}
       />
-    </div>
+    </AppLayout>
+    </PageShell>
   );
 }

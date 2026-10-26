@@ -1,92 +1,90 @@
 import { useEffect, useState } from 'react';
-import api, { categoriaProducto } from '../api/api';
-import Navbar from '../components/Navbar';
+import api from '../api/api';
+import PageShell from '../components/PageShell';
+import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { Producto } from '../types';
+import { currentBranch, formatMoney } from '../lib/format';
 
-type Category = 'all' | 'beer' | 'aguardiente' | 'rum' | 'whisky' | 'tequila' | 'wine';
-
-const LABELS: Record<Category, string> = {
-  all: 'All',
-  beer: 'Beers',
-  aguardiente: 'Aguardiente',
-  rum: 'Rums',
-  whisky: 'Whisky',
-  tequila: 'Tequila/Vodka',
-  wine: 'Wines',
-};
-
-const translateCategory = (cat: string): Category => {
-  const map: Record<string, Category> = {
-    cerveza: 'beer',
-    aguardiente: 'aguardiente',
-    ron: 'rum',
-    whisky: 'whisky',
-    tequila: 'tequila',
-    vino: 'wine',
-  };
-  return map[cat] || 'beer';
-};
+interface ProductType {
+  id: number;
+  nombre: string;
+}
 
 export default function Productos() {
   useInactivityLogout();
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [types, setTypes] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<Category>('all');
+  const [typeId, setTypeId] = useState<number | 'all'>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api
-      .get('/api/products')
-      .then((r) => setProductos(r.data))
+    Promise.all([
+      api.get('/api/products'),
+      api.get('/api/product-types').catch(() => ({ data: [] })),
+    ])
+      .then(([rP, rT]) => {
+        setProductos(Array.isArray(rP.data) ? rP.data : []);
+        setTypes(Array.isArray(rT.data) ? rT.data : []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const cat = (p: Producto): Category =>
-    translateCategory(p.categoria || categoriaProducto(p.nombre));
-
-  const filtered = productos.filter((p) =>
-    filter === 'all' ? true : cat(p) === filter
-  );
-
-  const count = (c: Category) =>
-    c === 'all' ? productos.length : productos.filter((p) => cat(p) === c).length;
+  const filtered = productos.filter((p) => {
+    const matchType = typeId === 'all' || Number(p.tipoProductoId) === typeId;
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q || p.nombre.toLowerCase().includes(q) || String((p as Producto & { codigo?: string }).codigo || '').toLowerCase().includes(q);
+    return matchType && matchSearch;
+  });
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
-      <Navbar />
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <header className="mb-8">
-          <p
-            className="text-xs uppercase tracking-widest text-gray-500 mb-2"
-            style={{ letterSpacing: '0.15em' }}
-          >
-            Liquor menu · bottles only
-          </p>
-          <h1
-            className="font-display text-4xl"
-            style={{ color: 'var(--bar-dark)' }}
-          >
-            Our selection
-          </h1>
-        </header>
-
+    <PageShell>
+    <AppLayout
+      eyebrow="Welcome to Terraza Premium"
+      title="Product catalog"
+      subtitle={`Liquor menu · ${currentBranch()}`}
+    >
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search product..."
+            className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white"
+            style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+          />
+        </div>
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-          {(Object.keys(LABELS) as Category[]).map((c) => {
-            const active = filter === c;
+          <button
+            type="button"
+            onClick={() => setTypeId('all')}
+            className="px-4 py-2 rounded-full border whitespace-nowrap text-sm"
+            style={{
+              background: typeId === 'all' ? '#926208' : 'transparent',
+              color: typeId === 'all' ? '#071525' : '#f7f2e9',
+              borderColor: 'rgba(146, 98, 8,0.4)',
+            }}
+          >
+            All ({productos.length})
+          </button>
+          {types.map((t) => {
+            const active = typeId === t.id;
+            const n = productos.filter((p) => Number(p.tipoProductoId) === t.id).length;
             return (
               <button
-                key={c}
-                onClick={() => setFilter(c)}
-                className="px-4 py-2 rounded-full border whitespace-nowrap text-sm transition-all"
+                key={t.id}
+                type="button"
+                onClick={() => setTypeId(t.id)}
+                className="px-4 py-2 rounded-full border whitespace-nowrap text-sm"
                 style={{
-                  background: active ? 'var(--bar-dark)' : 'white',
-                  color: active ? 'var(--bar-gold)' : '#555',
-                  borderColor: active ? 'var(--bar-dark)' : 'rgba(0,0,0,0.1)',
+                  background: active ? '#926208' : 'transparent',
+                  color: active ? '#071525' : '#f7f2e9',
+                  borderColor: 'rgba(146, 98, 8,0.4)',
                 }}
               >
-                {LABELS[c]} ({count(c)})
+                {t.nombre} ({n})
               </button>
             );
           })}
@@ -96,36 +94,29 @@ export default function Productos() {
           <p className="text-gray-400">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map((p) => (
+            {filtered.map((p) => {
+              const extra = p as Producto & { codigo?: string; tipoNombre?: string; valorVenta?: number };
+              return (
               <div
                 key={p.id}
                 className="rounded-xl border p-5 hover:shadow-lg transition-all relative"
-                style={{ background: 'white', borderColor: 'rgba(212,162,76,0.35)' }}
+                style={{ background: '#10243d', borderColor: 'rgba(146, 98, 8,0.28)' }}
               >
-                <div className="flex justify-end mb-2">
-                  <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(139,44,44,0.08)', color: 'var(--bar-red)' }}
-                  >
-                    +18
-                  </span>
-                </div>
-
-                <h3 className="font-medium text-gray-800 mb-3 leading-tight min-h-[2.5rem]">
+                <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: '#926208' }}>
+                  {extra.tipoNombre || extra.codigo || 'Bottle'}
+                </p>
+                <h3 className="font-medium mb-3 leading-tight min-h-[2.5rem]" style={{ color: '#f7f2e9' }}>
                   {p.nombre}
                 </h3>
-
-                <p
-                  className="font-display text-2xl"
-                  style={{ color: 'var(--bar-dark)' }}
-                >
-                  ${p.precio?.toLocaleString()}
+                <p className="font-display text-2xl" style={{ color: '#926208' }}>
+                  {formatMoney(p.precio || extra.valorVenta || 0)}
                 </p>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
-      </main>
-    </div>
+    </AppLayout>
+    </PageShell>
   );
 }

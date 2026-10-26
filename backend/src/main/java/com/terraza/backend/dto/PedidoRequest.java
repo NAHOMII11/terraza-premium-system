@@ -12,12 +12,12 @@ import java.util.List;
 @Setter
 public class PedidoRequest {
 
-    @NotNull(message = "La sede es obligatoria")
+    @NotNull(message = "Branch is required")
     private Long sedeId;
 
     private Long mesaId;
 
-    @NotEmpty(message = "El pedido debe incluir al menos un producto")
+    @NotEmpty(message = "The order must include at least one product")
     @Valid
     private List<DetallePedidoRequest> detalles;
 }

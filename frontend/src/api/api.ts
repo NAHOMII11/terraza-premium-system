@@ -104,7 +104,7 @@ let MOCK_ORDERS: { id: number; mesaId: number; estado: string; total: number; se
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true, // envía cookies de sesión
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -142,11 +142,14 @@ api.interceptors.response.use(
     return res;
   },
   (error) => {
-    // TODO: Reactivar cuando Nahomi arregle CORS con credenciales
-    // if (error.response?.status === 401) {
-    //   localStorage.clear();
-    //   window.location.href = '/login';
-    // }
+    const url = String(error.config?.url || '');
+    const status = error.response?.status;
+    if (status === 401 && !url.includes('/api/auth/login')) {
+      localStorage.clear();
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );
@@ -186,7 +189,7 @@ if (USE_MOCK) {
       });
     }
 
-    if (url.includes('/api/auth/logout')) return ok({ message: 'Sesión cerrada' });
+    if (url.includes('/api/auth/logout')) return ok({ message: 'Session closed' });
     if (url.includes('/api/products') && method === 'get') return ok(MOCK_PRODUCTS);
     if (url.includes('/api/tables') && method === 'get') return ok(MOCK_TABLES);
 

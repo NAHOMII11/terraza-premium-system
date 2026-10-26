@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { categoriaProducto } from '../api/api';
-import Navbar from '../components/Navbar';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageShell from '../components/PageShell';
+import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { Producto } from '../types';
+import { formatMoney } from '../lib/format';
 
 interface CartItem {
   productoId: number;
@@ -141,10 +143,9 @@ export default function TomarPedido() {
   // ==================== TABLE OCCUPIED ====================
   if (tableOccupied) {
     return (
-      <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
-        <Navbar />
-
-        <main className="max-w-2xl mx-auto px-6 py-16">
+      <PageShell>
+      <AppLayout eyebrow="Welcome to Terraza Premium" title="This table is occupied" banner={false}>
+        <main className="max-w-2xl mx-auto py-6">
           <button
             onClick={() => navigate('/mesera/mesas')}
             className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-800 mb-8 flex items-center gap-1"
@@ -160,7 +161,7 @@ export default function TomarPedido() {
 
           <div
             className="bg-white rounded-2xl border p-8 text-center"
-            style={{ borderColor: 'rgba(212,162,76,0.35)' }}
+            style={{ borderColor: 'rgba(146, 98, 8,0.35)' }}
           >
             <div
               className="w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center"
@@ -180,8 +181,8 @@ export default function TomarPedido() {
             </p>
             <h1
               className="font-display text-4xl mb-3"
-              style={{ color: 'var(--bar-dark)' }}
-            >
+            style={{ color: '#f7f2e9' }}
+          >
               This table is occupied
             </h1>
             <p className="text-gray-500 mb-8 max-w-md mx-auto">
@@ -215,16 +216,16 @@ export default function TomarPedido() {
           onConfirm={releaseTable}
           onCancel={() => setAskRelease(false)}
         />
-      </div>
+      </AppLayout>
+      </PageShell>
     );
   }
 
   // ==================== TABLE AVAILABLE → TAKE ORDER ====================
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bar-cream)' }}>
-      <Navbar />
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
+    <PageShell>
+    <AppLayout eyebrow="Welcome to Terraza Premium" title="Take order" banner={false}>
+      <main className="max-w-7xl mx-auto">
         <header className="mb-8">
           <button
             onClick={() => navigate('/mesera/mesas')}
@@ -271,7 +272,7 @@ export default function TomarPedido() {
                       key={p.id}
                       onClick={() => add(p)}
                       className="bg-white border rounded-xl p-4 text-left hover:shadow-md hover:-translate-y-0.5 transition-all relative"
-                      style={{ borderColor: 'rgba(212,162,76,0.35)' }}
+                      style={{ borderColor: 'rgba(146, 98, 8,0.35)' }}
                     >
                       <div
                         className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold"
@@ -289,7 +290,7 @@ export default function TomarPedido() {
                         className="font-display text-xl mt-1"
                         style={{ color: 'var(--bar-gold)' }}
                       >
-                        ${p.precio?.toLocaleString()}
+                        {formatMoney(p.precio)}
                       </p>
                     </button>
                   );
@@ -334,7 +335,7 @@ export default function TomarPedido() {
                           {i.nombre}
                         </p>
                         <p className="text-xs text-gray-500">
-                          ${i.precio?.toLocaleString()} × {i.cantidad}
+                          {formatMoney(i.precio)} × {i.cantidad}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -380,7 +381,7 @@ export default function TomarPedido() {
                     className="font-display text-3xl"
                     style={{ color: 'var(--bar-dark)' }}
                   >
-                    ${total.toLocaleString()}
+                    {formatMoney(total)}
                   </span>
                 </div>
 
@@ -414,6 +415,7 @@ export default function TomarPedido() {
         onConfirm={releaseTable}
         onCancel={() => setAskRelease(false)}
       />
-    </div>
+    </AppLayout>
+    </PageShell>
   );
 }

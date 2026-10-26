@@ -10,12 +10,12 @@ import lombok.Setter;
 @Setter
 public class LoginRequest {
 
-    @NotBlank(message = "El email es obligatorio")
-    @Email(message = "El email no es válido")
-    @Size(max = 150, message = "El email es demasiado largo")
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email is not valid")
+    @Size(max = 150, message = "Email is too long")
     private String email;
 
-    @NotBlank(message = "La contraseña es obligatoria")
-    @Size(max = 72, message = "La contraseña es demasiado larga")
+    @NotBlank(message = "Password is required")
+    @Size(max = 72, message = "Password is too long")
     private String password;
 }

@@ -41,6 +41,35 @@ public class ProductTypeRepository {
         return total != null && total > 0;
     }
 
+    public boolean existeNombreEnOtra(String nombre, Long id) {
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM tipos_producto WHERE LOWER(nombre) = LOWER(?) AND id <> ?",
+                Integer.class,
+                nombre,
+                id);
+        return total != null && total > 0;
+    }
+
+    public int actualizar(Long id, String nombre, String descripcion) {
+        return jdbc.update("""
+                UPDATE tipos_producto
+                SET nombre = ?, descripcion = ?, updated_at = NOW()
+                WHERE id = ?
+                """, nombre, descripcion, id);
+    }
+
+    public int contarProductos(Long id) {
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM productos WHERE tipo_producto_id = ?",
+                Integer.class,
+                id);
+        return total == null ? 0 : total;
+    }
+
+    public int eliminar(Long id) {
+        return jdbc.update("DELETE FROM tipos_producto WHERE id = ?", id);
+    }
+
     public Long insertar(String nombre, String descripcion) {
         return jdbc.queryForObject("""
                 INSERT INTO tipos_producto (nombre, descripcion, active)

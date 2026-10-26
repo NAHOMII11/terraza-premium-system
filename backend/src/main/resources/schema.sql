@@ -152,15 +152,15 @@ CREATE INDEX IF NOT EXISTS idx_inventario_producto ON inventario (producto_id);
 -- Catálogo mínimo para la clave foránea del administrador.
 -- Sin estos registros el INSERT del admin no puede cumplirse.
 INSERT INTO roles (nombre, descripcion) VALUES
-    ('ADMIN', 'Administrador'),
-    ('CAJERO', 'Cajero'),
-    ('MESERO', 'Mesero')
+    ('ADMIN', 'Administrator'),
+    ('CAJERO', 'Cashier'),
+    ('MESERO', 'Waiter')
 ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO sedes (nombre, direccion, ciudad) VALUES
-    ('Galerías', 'Sede Galerías', 'Bogotá'),
-    ('Zona T', 'Sede Zona T', 'Bogotá'),
-    ('La 85', 'Sede La 85', 'Bogotá')
+    ('Galerías', 'Cra. 15 #80-20', 'Bogotá'),
+    ('Zona T', 'Cra. 12A #83-45', 'Bogotá'),
+    ('La 85', 'Cll. 85 #12-40', 'Bogotá')
 ON CONFLICT (nombre) DO NOTHING;
 
 -- OWASP A02: hash bcrypt con factor 12. Clave temporal: Admin123*

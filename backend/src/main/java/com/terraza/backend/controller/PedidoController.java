@@ -53,7 +53,7 @@ public class PedidoController {
 
     private UsuarioPrincipal principal(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof UsuarioPrincipal principal)) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Autenticación requerida");
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
         return principal;
     }

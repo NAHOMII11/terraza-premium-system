@@ -47,7 +47,7 @@ public class MesaController {
 
     private UsuarioPrincipal principal(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof UsuarioPrincipal usuario)) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Autenticación requerida");
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
         return usuario;
     }

@@ -34,7 +34,7 @@ public class MesaService {
         Mesa mesa = buscarActiva(id);
         exigirAccesoSede(principal, mesa.getSedeId());
         if (mesaRepository.actualizarEstado(id, estado) == 0) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "Mesa no encontrada");
+            throw new BusinessException(HttpStatus.NOT_FOUND, "Table not found");
         }
         auditoriaService.registrar("ACTUALIZAR_MESA", "Mesa " + id + " → " + estado);
         return MesaDTO.from(buscarActiva(id));
@@ -42,18 +42,18 @@ public class MesaService {
 
     private Mesa buscarActiva(Long id) {
         return mesaRepository.buscarPorId(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Mesa no encontrada"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Table not found"));
     }
 
     private void validarEstado(String estado) {
         if (!Mesa.DISPONIBLE.equals(estado) && !Mesa.OCUPADA.equals(estado)) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "Estado inválido: " + estado);
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Invalid status: " + estado);
         }
     }
 
     private void exigirSede(Long sedeId) {
         if (sedeRepository.findById(sedeId).isEmpty()) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "Sede no encontrada");
+            throw new BusinessException(HttpStatus.NOT_FOUND, "Branch not found");
         }
     }
 
@@ -63,7 +63,7 @@ public class MesaService {
         }
         Long sedeUsuario = principal.getUsuario().getSedeId();
         if (sedeUsuario == null || !sedeUsuario.equals(sedeId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "No puede operar mesas de otra sede");
+            throw new BusinessException(HttpStatus.FORBIDDEN, "You cannot operate tables from another branch");
         }
     }
 }

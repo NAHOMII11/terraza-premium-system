@@ -20,6 +20,7 @@ public class SedeRepository {
         return jdbc.query("""
                 SELECT id, nombre, direccion, telefono, ciudad, active, created_at, updated_at
                 FROM sedes
+                WHERE active = TRUE
                 ORDER BY nombre
                 """, (rs, rowNum) -> map(rs));
     }

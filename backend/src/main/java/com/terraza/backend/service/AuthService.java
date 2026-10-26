@@ -50,14 +50,14 @@ public class AuthService {
                     existente.map(Usuario::getId).orElse(null),
                     existente.map(Usuario::getSedeId).orElse(null),
                     "LOGIN_FALLIDO",
-                    "Credenciales inválidas");
+                    "Invalid credentials");
             throw ex;
         } catch (AuthenticationException ex) {
             auditoriaService.registrar(
                     existente.map(Usuario::getId).orElse(null),
                     existente.map(Usuario::getSedeId).orElse(null),
                     "LOGIN_FALLIDO",
-                    "Autenticación rechazada");
+                    "Authentication rejected");
             throw ex;
         }
 
@@ -81,12 +81,12 @@ public class AuthService {
     public MessageResponse logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof UsuarioPrincipal principal)) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Autenticación requerida");
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
 
         auditoriaService.registrar(
                 "CIERRE_SESION",
-                "Cierre de sesión de " + principal.getUsuario().getRolNombre());
+                "Logout of " + principal.getUsuario().getRolNombre());
         log.info("Sesión cerrada para el usuario {}", principal.getUsuario().getId());
 
         SecurityContextHolder.clearContext();
@@ -94,6 +94,6 @@ public class AuthService {
         if (session != null) {
             session.invalidate();
         }
-        return new MessageResponse("Sesión cerrada correctamente");
+        return new MessageResponse("Session closed successfully");
     }
 }
