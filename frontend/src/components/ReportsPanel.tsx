@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import api from '../api/api';
 import { downloadCsv, downloadExcel } from '../lib/export';
-import { formatMoney } from '../lib/format';
 
 interface SaleRow {
   pedidoId: number;
@@ -33,6 +32,23 @@ function qs(params: Record<string, string | undefined>) {
   return s ? `?${s}` : '';
 }
 
+function fmtDate(value?: string) {
+  if (!value) return '';
+  return String(value).replace('T', ' ').slice(0, 16);
+}
+
+function money(value: number | string | null | undefined) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? Math.round(n) : 0;
+}
+
+function payLabel(method?: string) {
+  if (method === 'EFECTIVO') return 'Cash';
+  if (method === 'TARJETA_CREDITO') return 'Credit card';
+  if (method === 'TARJETA_DEBITO') return 'Debit card';
+  return method || '';
+}
+
 export default function ReportsPanel({
   sedeId,
   allowAllBranches,
@@ -43,68 +59,89 @@ export default function ReportsPanel({
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [scope, setScope] = useState<'branch' | 'all'>(allowAllBranches ? 'all' : 'branch');
-  const [sales, setSales] = useState<SaleRow[]>([]);
-  const [sold, setSold] = useState<SoldRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
 
-  const load = () => {
-    setLoading(true);
+  const query = () => {
     const sede = allowAllBranches && scope === 'all' ? undefined : sedeId;
-    const q = qs({ sedeId: sede, from, to });
-    Promise.all([
-      api.get(`/api/reports/sales${q}`).catch(() => ({ data: [] })),
-      api.get(`/api/reports/inventory-sold${q}`).catch(() => ({ data: [] })),
-    ])
-      .then(([rS, rI]) => {
-        setSales(Array.isArray(rS.data) ? rS.data : []);
-        setSold(Array.isArray(rI.data) ? rI.data : []);
-      })
-      .finally(() => setLoading(false));
+    return qs({ sedeId: sede, from, to });
   };
 
-  useEffect(() => {
-    load();
-  }, [sedeId, scope]);
-
-  const exportSales = (kind: 'csv' | 'excel') => {
-    const headers = ['Order', 'Date', 'Branch', 'Table', 'Total', 'Method', 'Cashier'];
-    const rows = sales.map((r) => [r.pedidoId, r.fecha || '', r.sede || '', r.mesa ?? '', Number(r.total) || 0, r.metodoPago || '', r.cajero || '']);
-    if (kind === 'csv') downloadCsv('sales-report', headers, rows);
-    else downloadExcel('sales-report', headers, rows);
+  const exportSales = async (kind: 'csv' | 'excel') => {
+    setBusy(true);
+    setNote('');
+    try {
+      const { data } = await api.get(`/api/reports/sales${query()}`);
+      const sales: SaleRow[] = Array.isArray(data) ? data : [];
+      if (sales.length === 0) {
+        setNote('No sales in this range.');
+        return;
+      }
+      const headers = ['Order', 'Date', 'Branch', 'Table', 'Total (COP)', 'Payment method', 'Cashier'];
+      const rows = sales.map((r) => [
+        r.pedidoId,
+        fmtDate(r.fecha),
+        r.sede || '',
+        r.mesa ?? '',
+        money(r.total),
+        payLabel(r.metodoPago),
+        r.cajero || '',
+      ]);
+      if (kind === 'csv') downloadCsv('sales-report', headers, rows);
+      else downloadExcel('sales-report', headers, rows, 'Sales');
+    } catch {
+      setNote('Could not download sales report.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const exportSold = (kind: 'csv' | 'excel') => {
-    const headers = ['Date', 'Code', 'Name', 'Qty sold', 'Purchase', 'Sale', 'Profit', 'Branch'];
-    const rows = sold.map((r) => [
-      r.fecha || '',
-      r.codigo || '',
-      r.nombre || '',
-      r.cantidadVendida ?? 0,
-      Number(r.valorCompra) || 0,
-      Number(r.valorVenta) || 0,
-      Number(r.ganancia) || 0,
-      r.sede || '',
-    ]);
-    if (kind === 'csv') downloadCsv('inventory-report', headers, rows);
-    else downloadExcel('inventory-report', headers, rows);
+  const exportSold = async (kind: 'csv' | 'excel') => {
+    setBusy(true);
+    setNote('');
+    try {
+      const { data } = await api.get(`/api/reports/inventory-sold${query()}`);
+      const sold: SoldRow[] = Array.isArray(data) ? data : [];
+      if (sold.length === 0) {
+        setNote('No inventory rows in this range.');
+        return;
+      }
+      const headers = ['Date', 'Code', 'Name', 'Quantity sold', 'Purchase (COP)', 'Sale (COP)', 'Profit (COP)', 'Branch'];
+      const rows = sold.map((r) => [
+        fmtDate(String(r.fecha || '')),
+        r.codigo || '',
+        r.nombre || '',
+        r.cantidadVendida ?? 0,
+        money(r.valorCompra),
+        money(r.valorVenta),
+        money(r.ganancia),
+        r.sede || '',
+      ]);
+      if (kind === 'csv') downloadCsv('inventory-report', headers, rows);
+      else downloadExcel('inventory-report', headers, rows, 'Inventory');
+    } catch {
+      setNote('Could not download inventory report.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
-          <span className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: '#926208' }}>From</span>
+          <span className="block text-xs uppercase tracking-widest mb-1" style={{ color: '#c9a227' }}>From</span>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
             className="px-3 py-2 rounded-lg border bg-transparent text-sm" />
         </label>
         <label className="text-sm">
-          <span className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: '#926208' }}>To</span>
+          <span className="block text-xs uppercase tracking-widest mb-1" style={{ color: '#c9a227' }}>To</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
             className="px-3 py-2 rounded-lg border bg-transparent text-sm" />
         </label>
         {allowAllBranches && (
           <label className="text-sm">
-            <span className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: '#926208' }}>Scope</span>
+            <span className="block text-xs uppercase tracking-widest mb-1" style={{ color: '#c9a227' }}>Scope</span>
             <select value={scope} onChange={(e) => setScope(e.target.value as 'branch' | 'all')}
               className="px-3 py-2 rounded-lg border bg-transparent text-sm">
               <option value="branch">Current branch</option>
@@ -112,78 +149,15 @@ export default function ReportsPanel({
             </select>
           </label>
         )}
-        <button type="button" onClick={load} className="px-3 py-2 rounded-lg text-sm font-medium"
-          style={{ background: '#926208', color: '#071525' }}>
-          Apply
-        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSales('csv')}>Sales report CSV</button>
-        <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSales('excel')}>Sales report Excel</button>
-        <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSold('csv')}>Inventory report CSV</button>
-        <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSold('excel')}>Inventory report Excel</button>
+        <button type="button" disabled={busy} className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSales('csv')}>Sales report CSV</button>
+        <button type="button" disabled={busy} className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSales('excel')}>Sales report Excel</button>
+        <button type="button" disabled={busy} className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSold('csv')}>Inventory report CSV</button>
+        <button type="button" disabled={busy} className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportSold('excel')}>Inventory report Excel</button>
       </div>
-
-      {loading ? <p className="text-gray-400 text-sm">Loading reports...</p> : (
-        <>
-          <div>
-            <h3 className="font-display text-xl mb-3">Sales report</h3>
-            {sales.length === 0 ? <p className="text-gray-400 text-sm">No sales in this range.</p> : (
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <th className="text-left px-3 py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Order</th>
-                    <th className="text-left px-3 py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Date</th>
-                    <th className="text-left px-3 py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Branch</th>
-                    <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sales.map((r) => (
-                    <tr key={r.pedidoId} className="border-t" style={{ borderColor: 'rgba(247,242,233,0.08)' }}>
-                      <td className="px-3 py-2">#{r.pedidoId}</td>
-                      <td className="px-3 py-2 text-sm">{r.fecha ? String(r.fecha).replace('T', ' ').slice(0, 16) : '—'}</td>
-                      <td className="px-3 py-2">{r.sede}</td>
-                      <td className="px-3 py-2 text-right">{formatMoney(r.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div>
-            <h3 className="font-display text-xl mb-3">Inventory report</h3>
-            {sold.length === 0 ? <p className="text-gray-400 text-sm">No inventory rows in this range.</p> : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
-                  <thead>
-                    <tr>
-                      {['Date', 'Code', 'Name', 'Qty', 'Purchase', 'Sale', 'Profit', 'Branch'].map((h) => (
-                        <th key={h} className="text-left px-3 py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sold.map((r, i) => (
-                      <tr key={`${r.codigo}-${r.fecha}-${r.sede}-${i}`} className="border-t" style={{ borderColor: 'rgba(247,242,233,0.08)' }}>
-                        <td className="px-3 py-2 text-sm">{r.fecha || '—'}</td>
-                        <td className="px-3 py-2">{r.codigo}</td>
-                        <td className="px-3 py-2">{r.nombre}</td>
-                        <td className="px-3 py-2">{r.cantidadVendida}</td>
-                        <td className="px-3 py-2">{formatMoney(r.valorCompra)}</td>
-                        <td className="px-3 py-2">{formatMoney(r.valorVenta)}</td>
-                        <td className="px-3 py-2">{formatMoney(r.ganancia)}</td>
-                        <td className="px-3 py-2">{r.sede}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      {note && <p className="text-sm text-gray-400">{note}</p>}
     </div>
   );
 }

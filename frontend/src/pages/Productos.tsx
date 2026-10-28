@@ -62,7 +62,7 @@ export default function Productos() {
             onClick={() => setTypeId('all')}
             className="px-4 py-2 rounded-full border whitespace-nowrap text-sm"
             style={{
-              background: typeId === 'all' ? '#926208' : 'transparent',
+              background: typeId === 'all' ? '#926208' : '#10243d',
               color: typeId === 'all' ? '#071525' : '#f7f2e9',
               borderColor: 'rgba(146, 98, 8,0.4)',
             }}
@@ -79,7 +79,7 @@ export default function Productos() {
                 onClick={() => setTypeId(t.id)}
                 className="px-4 py-2 rounded-full border whitespace-nowrap text-sm"
                 style={{
-                  background: active ? '#926208' : 'transparent',
+                  background: active ? '#926208' : '#10243d',
                   color: active ? '#071525' : '#f7f2e9',
                   borderColor: 'rgba(146, 98, 8,0.4)',
                 }}

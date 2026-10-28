@@ -20,6 +20,8 @@ public class InvoiceDTO {
     private Long mesaId;
     private Integer mesaNumero;
     private String meseroNombre;
+    private String cajeroNombre;
+    private String metodoPago;
     private String estado;
     private BigDecimal total;
     private LocalDateTime fechaApertura;

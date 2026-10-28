@@ -104,21 +104,21 @@ export default function AppLayout({
 
       <div className="app-main">
         <div className="app-top">
-          <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>
+          <p className="text-[14px] uppercase tracking-widest font-semibold" style={{ color: '#f7f2e9' }}>
             Terraza Premium
           </p>
           <div className="flex items-center gap-4">
             <BranchSwitcher />
             <div className="hidden md:flex flex-col items-end">
-              <p className="text-white text-xs">{localStorage.getItem('email')}</p>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>
+              <p className="text-white text-sm">{localStorage.getItem('email')}</p>
+              <p className="text-[12px] uppercase tracking-widest font-medium" style={{ color: '#c9a227' }}>
                 {roleName()}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setAskLogout(true)}
-              className="text-white text-sm border rounded-md px-3 py-1.5"
+              className="text-white text-[15px] border rounded-md px-3 py-1.5"
               style={{ borderColor: 'rgba(146, 98, 8,0.4)' }}
             >
               Sign out

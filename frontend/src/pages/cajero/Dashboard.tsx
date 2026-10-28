@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import api from '../../api/api';
 import PageShell from '../../components/PageShell';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
-import { formatMoney } from '../../lib/format';
+import { formatDateTime, formatMoney, paymentMethodLabel } from '../../lib/format';
 import { downloadCsv, downloadExcel } from '../../lib/export';
 import AppLayout from '../../components/AppLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import InvoiceView, { type Invoice } from '../../components/InvoiceView';
 import ReportsPanel from '../../components/ReportsPanel';
 
@@ -41,11 +42,24 @@ export default function Dashboard() {
   const [types, setTypes] = useState<ProductType[]>([]);
   const [typeModal, setTypeModal] = useState(false);
   const [editingType, setEditingType] = useState<ProductType | null>(null);
+  const [pendingType, setPendingType] = useState<ProductType | null>(null);
   const [typeForm, setTypeForm] = useState({ nombre: '', descripcion: '' });
   const [savingType, setSavingType] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(''), 10000);
+    return () => window.clearTimeout(t);
+  }, [message]);
+
+  const goTab = (key: Tab) => {
+    setMessage('');
+    setError('');
+    setTab(key);
+  };
 
   const [payModal, setPayModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -115,6 +129,21 @@ export default function Dashboard() {
     setError('');
   };
 
+  const deleteType = async () => {
+    if (!pendingType) return;
+    setError('');
+    setMessage('');
+    try {
+      await api.delete(`/api/product-types/${pendingType.id}`);
+      setMessage('Product type deleted');
+      setPendingType(null);
+      loadData();
+    } catch (err: any) {
+      setPendingType(null);
+      setError(err.response?.data?.message || 'Could not delete product type');
+    }
+  };
+
   const saveType = async () => {
     if (!editingType) return;
     setSavingType(true);
@@ -176,17 +205,29 @@ export default function Dashboard() {
   };
 
   const exportInvoices = (kind: 'csv' | 'excel') => {
-    const headers = ['Invoice', 'Table', 'Waiter', 'Total', 'Closed'];
+    const headers = [
+      'Invoice number',
+      'Table',
+      'Branch',
+      'Waiter',
+      'Cashier',
+      'Payment method',
+      'Total (COP)',
+      'Closed at',
+    ];
     const rows = invoices.map((row) => [
       row.pedidoId,
       row.mesaNumero ?? '',
+      row.sedeNombre || '',
       row.meseroNombre || '',
-      Number(row.total) || 0,
-      row.fechaCierre || '',
+      row.cajeroNombre || row.pago?.cajeroNombre || '',
+      paymentMethodLabel(row.metodoPago || row.pago?.metodoPago),
+      Math.round(Number(row.total) || 0),
+      formatDateTime(row.fechaCierre),
     ]);
     const name = `invoices-branch-${sedeId}`;
     if (kind === 'csv') downloadCsv(name, headers, rows);
-    else downloadExcel(name, headers, rows);
+    else downloadExcel(name, headers, rows, 'Invoices');
   };
 
   const openInvoice = async (id: number) => {
@@ -206,8 +247,8 @@ export default function Dashboard() {
     >
 
         {message && (
-          <div className="mb-6 px-4 py-3 rounded-lg text-sm border-l-4"
-               style={{ background: '#f0fdf4', borderColor: '#16a34a', color: '#166534' }}>
+          <div className="mb-6 px-4 py-3 rounded-lg text-base font-medium border-l-4"
+               style={{ background: '#dcfce7', borderColor: '#15803d', color: '#14532d' }}>
             {message}
           </div>
         )}
@@ -220,10 +261,10 @@ export default function Dashboard() {
           ] as { key: Tab; label: string }[]).map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => goTab(t.key)}
               className="px-4 py-2 rounded-lg border text-sm transition-all"
               style={{
-                  background: tab === t.key ? 'var(--bar-gold)' : 'transparent',
+                  background: tab === t.key ? 'var(--bar-gold)' : '#10243d',
                   color: tab === t.key ? '#07121c' : '#f7f2e9',
                   borderColor: 'rgba(146, 98, 8,0.35)',
               }}
@@ -303,9 +344,11 @@ export default function Dashboard() {
                     <tr key={t.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                       <td className="px-6 py-4 font-medium">{t.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{t.descripcion || '—'}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right whitespace-nowrap space-x-2">
                         <button type="button" onClick={() => openEditType(t)}
                           className="text-sm px-3 py-1.5 rounded-lg border">Edit</button>
+                        <button type="button" onClick={() => setPendingType(t)}
+                          className="text-sm px-3 py-1.5 rounded-lg border">Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -317,7 +360,7 @@ export default function Dashboard() {
               <div className="p-6 space-y-8">
                 <ReportsPanel sedeId={sedeId} allowAllBranches={false} />
                 <div>
-                  <h3 className="font-display text-xl mb-1" style={{ color: 'var(--bar-dark)' }}>
+                  <h3 className="font-display text-xl mb-1" style={{ color: '#f7f2e9' }}>
                     Sales pending collection
                   </h3>
                   <p className="text-sm text-gray-500 mb-4">Open orders.</p>
@@ -331,7 +374,7 @@ export default function Dashboard() {
                   <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => exportInvoices('excel')}>Invoices Excel</button>
                 </div>
                 <div>
-                  <h3 className="font-display text-xl mb-3" style={{ color: 'var(--bar-dark)' }}>
+                  <h3 className="font-display text-xl mb-3" style={{ color: '#f7f2e9' }}>
                     Closed invoices
                   </h3>
                   {invoices.length === 0 ? (
@@ -342,6 +385,8 @@ export default function Dashboard() {
                         <tr>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Invoice</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Table</th>
+                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Waiter</th>
+                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Cashier</th>
                           <th className="text-right px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Total</th>
                           <th className="text-right px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Action</th>
                         </tr>
@@ -351,6 +396,8 @@ export default function Dashboard() {
                           <tr key={row.pedidoId} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                             <td className="px-4 py-2">#{row.pedidoId}</td>
                             <td className="px-4 py-2">Table {row.mesaNumero ?? '—'}</td>
+                            <td className="px-4 py-2">{row.meseroNombre || '—'}</td>
+                            <td className="px-4 py-2">{row.cajeroNombre || row.pago?.cajeroNombre || '—'}</td>
                             <td className="px-4 py-2 text-right">{formatMoney(row.total)}</td>
                             <td className="px-4 py-2 text-right">
                               <button type="button" className="text-sm px-3 py-1.5 rounded-lg border" onClick={() => openInvoice(row.pedidoId)}>View</button>
@@ -500,6 +547,14 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={!!pendingType}
+        title="Delete product type"
+        message={pendingType ? `Delete ${pendingType.nombre}?` : ''}
+        confirmLabel="Delete"
+        onConfirm={deleteType}
+        onCancel={() => setPendingType(null)}
+      />
       {invoice && <InvoiceView invoice={invoice} onClose={() => setInvoice(null)} />}
     </AppLayout>
     </PageShell>

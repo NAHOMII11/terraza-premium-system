@@ -45,7 +45,7 @@ public class ProductTypeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO')")
     public MessageResponse eliminar(@PathVariable Long id) {
         productTypeService.eliminar(id);
         return new MessageResponse("Product type deleted");

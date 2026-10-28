@@ -14,6 +14,12 @@ export default function Mesas() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(''), 10000);
+    return () => window.clearTimeout(t);
+  }, [message]);
   const [releaseTarget, setReleaseTarget] = useState<{ id: number; numero: number } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,7 +97,7 @@ export default function Mesas() {
           <div className="flex flex-wrap justify-end gap-6 mb-8">
           <div className="flex gap-6">
             <div>
-              <p className="text-xs uppercase tracking-widest text-gray-500">
+              <p className="text-xs uppercase tracking-widest font-medium" style={{ color: '#071525' }}>
                 Available
               </p>
               <p className="font-display text-3xl" style={{ color: '#926208' }}>
@@ -102,7 +108,7 @@ export default function Mesas() {
               className="border-l pl-6"
               style={{ borderColor: 'rgba(0,0,0,0.1)' }}
             >
-              <p className="text-xs uppercase tracking-widest text-gray-500">
+              <p className="text-xs uppercase tracking-widest font-medium" style={{ color: '#071525' }}>
                 Occupied
               </p>
               <p className="font-display text-3xl" style={{ color: '#b71c1c' }}>
@@ -113,8 +119,8 @@ export default function Mesas() {
           </div>
 
         {message && (
-          <div className="mb-6 px-4 py-3 rounded-lg text-sm border-l-4"
-               style={{ background: '#f0fdf4', borderColor: '#16a34a', color: '#166534' }}>
+          <div className="mb-6 px-4 py-3 rounded-lg text-base font-medium border-l-4"
+               style={{ background: '#dcfce7', borderColor: '#15803d', color: '#14532d' }}>
             {message}
           </div>
         )}

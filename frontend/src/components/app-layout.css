@@ -54,26 +54,26 @@
 .app-side-brand strong {
   display: block;
   letter-spacing: 0.32em;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 500;
   text-transform: uppercase;
-  color: #926208;
+  color: #c9a227;
 }
 
 .app-side-brand span {
   display: block;
   letter-spacing: 0.38em;
-  font-size: 0.5rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  color: #926208;
+  color: #c9a227;
   margin-top: 0.14rem;
 }
 
 .app-side-role {
-  font-size: 0.6rem;
+  font-size: 0.68rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #a7afbc;
+  color: #c5cbd4;
   padding: 0.15rem 0.7rem 0.65rem;
   position: relative;
   z-index: 1;
@@ -84,10 +84,10 @@
   text-align: left;
   border: 0;
   background: transparent;
-  color: rgba(247, 242, 233, 0.78);
+  color: rgba(247, 242, 233, 0.94);
   padding: 0.7rem 0.9rem;
   border-radius: 0.75rem;
-  font-size: 0.88rem;
+  font-size: 0.94rem;
   margin-bottom: 0.16rem;
   cursor: pointer;
   position: relative;
@@ -140,13 +140,20 @@
   font-size: 0.7rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #926208;
+  color: #d29016;
   line-height: 1.45;
 }
 
 .app-main {
   min-width: 0;
-  background: #071525;
+  background-color: #f7f2e9;
+  background-image:
+    linear-gradient(rgba(247, 242, 233, 0.62), rgba(247, 242, 233, 0.7)),
+    url('../assets/lounge-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 .app-top {
@@ -192,9 +199,11 @@
 .app-banner-copy .eyebrow {
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  font-size: 0.64rem;
-  color: #926208;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #d09017;
   margin-bottom: 0.4rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
 }
 
 .app-banner-copy h1 {
@@ -207,8 +216,8 @@
 
 .app-banner-copy .sub {
   margin-top: 0.5rem;
-  color: rgba(247, 242, 233, 0.82);
-  font-size: 0.95rem;
+  color: rgba(247, 242, 233, 0.92);
+  font-size: 1.02rem;
 }
 
 .app-banner-copy .date {
@@ -224,11 +233,11 @@
   z-index: 1;
   font-family: 'Playfair Display', Georgia, serif;
   font-style: italic;
-  color: #926208;
-  font-size: 1.2rem;
+  color: #f7f2e9;
+  font-size: 1.45rem;
   text-align: right;
   line-height: 1.3;
-  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75), 0 8px 22px rgba(0, 0, 0, 0.55);
 }
 
 .app-body {
@@ -251,16 +260,16 @@
 
 .app-metric span {
   display: block;
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #a7afbc;
+  color: #c5cbd4;
   margin-bottom: 0.4rem;
 }
 
 .app-metric strong {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.7rem;
+  font-size: 1.82rem;
   font-weight: 500;
   color: #f7f2e9;
 }
@@ -307,9 +316,11 @@
   display: block;
   margin-top: 0.55rem;
   letter-spacing: 0.28em;
-  font-size: 0.62rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   text-transform: uppercase;
-  color: #926208;
+  color: #c48510;
+  text-shadow: 0 1px 6px rgba(247, 242, 233, 0.35), 0 2px 10px rgba(0, 0, 0, 0.75);
 }
 
 .app-mobile-nav {
@@ -340,10 +351,10 @@
 }
 
 .branch-switch-label {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #926208;
+  color: #c9a227;
   margin-right: 0.5rem;
 }
 
@@ -353,7 +364,7 @@
   border: 1px solid rgba(146, 98, 8, 0.45);
   border-radius: 0.5rem;
   padding: 0.4rem 0.85rem;
-  font-size: 0.86rem;
+  font-size: 0.95rem;
   min-width: 8.5rem;
   text-align: left;
   cursor: pointer;
@@ -402,10 +413,10 @@
 .premium-table th {
   text-align: left;
   padding: 0.9rem 1.25rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
+  font-size: 0.76rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #926208;
+  color: #c9a227;
   border-bottom: 1px solid rgba(146, 98, 8, 0.14);
 }
 
@@ -413,6 +424,8 @@
   padding: 1rem 1.25rem;
   border-bottom: 1px solid rgba(247, 242, 233, 0.06);
   color: #f7f2e9;
+  font-size: 0.98rem;
+  font-weight: 500;
 }
 
 .premium-table th:last-child,
@@ -432,7 +445,7 @@
   border: 0;
   border-radius: 0.55rem;
   padding: 0.55rem 1rem;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
 }

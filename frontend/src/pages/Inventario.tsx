@@ -19,6 +19,12 @@ export default function Inventario() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(''), 10000);
+    return () => window.clearTimeout(t);
+  }, [message]);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [draftStock, setDraftStock] = useState<Record<number, string>>({});
   const [addOpen, setAddOpen] = useState(false);
@@ -166,8 +172,8 @@ export default function Inventario() {
 
         {message && (
           <div
-            className="mb-6 px-4 py-3 rounded-lg text-sm border-l-4"
-            style={{ background: '#f0fdf4', borderColor: '#16a34a', color: '#166534' }}
+            className="mb-6 px-4 py-3 rounded-lg text-base font-medium border-l-4"
+            style={{ background: '#dcfce7', borderColor: '#15803d', color: '#14532d' }}
           >
             {message}
           </div>

@@ -1,3 +1,15 @@
+export function formatDateTime(value?: string | null) {
+  if (!value) return '';
+  return String(value).replace('T', ' ').replace(/\.\d+/, '').slice(0, 16);
+}
+
+export function paymentMethodLabel(method?: string | null) {
+  if (method === 'EFECTIVO') return 'Cash';
+  if (method === 'TARJETA_CREDITO') return 'Credit card';
+  if (method === 'TARJETA_DEBITO') return 'Debit card';
+  return method || '';
+}
+
 export function formatMoney(value: number | string | null | undefined) {
   const n = Number(value ?? 0);
   if (!Number.isFinite(n)) return 'COP 0';

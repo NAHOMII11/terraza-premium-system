@@ -5,6 +5,8 @@ export interface Invoice {
   sedeNombre?: string;
   mesaNumero?: number;
   meseroNombre?: string;
+  cajeroNombre?: string;
+  metodoPago?: string;
   estado?: string;
   total: number;
   fechaApertura?: string;
@@ -73,14 +75,14 @@ export default function InvoiceView({
               </svg>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.32em]" style={{ color: '#926208' }}>Terraza Premium</p>
-              <h3 className="font-display text-2xl leading-none mt-1" style={{ color: '#f7f2e9' }}>Invoice</h3>
+              <p className="text-xs uppercase tracking-[0.32em]" style={{ color: '#926208' }}>Terraza Premium</p>
+              <h3 className="font-display text-[1.7rem] leading-none mt-1" style={{ color: '#f7f2e9' }}>Invoice</h3>
             </div>
           </div>
           <div className="text-right">
-            <p className="font-display text-lg" style={{ color: '#f7f2e9' }}>{number}</p>
+            <p className="font-display text-xl" style={{ color: '#f7f2e9' }}>{number}</p>
             <span
-              className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-widest"
+              className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs uppercase tracking-widest"
               style={{
                 background: paid ? 'rgba(34,120,70,0.28)' : 'rgba(146, 98, 8,0.2)',
                 color: paid ? '#b7e4c7' : '#926208',
@@ -91,21 +93,21 @@ export default function InvoiceView({
           </div>
         </div>
 
-        <div className="px-7 py-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <div className="px-7 py-5 grid grid-cols-2 gap-x-6 gap-y-3 text-base">
           <div>
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Branch</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Branch</p>
             <p style={{ color: '#f7f2e9' }}>{branchLabel(invoice.sedeNombre) || '—'}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Table</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Table</p>
             <p style={{ color: '#f7f2e9' }}>{invoice.mesaNumero ?? '—'}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Issued</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Issued</p>
             <p style={{ color: '#f7f2e9' }}>{when(invoice.pago?.fechaPago || invoice.fechaCierre || invoice.fechaApertura)}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Waiter</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Waiter</p>
             <p style={{ color: '#f7f2e9' }}>{invoice.meseroNombre || '—'}</p>
           </div>
         </div>
@@ -114,16 +116,16 @@ export default function InvoiceView({
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(146, 98, 8, 0.28)' }}>
-                <th className="text-left py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Description</th>
-                <th className="text-right py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Qty</th>
-                <th className="text-right py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Unit</th>
-                <th className="text-right py-2 text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Amount</th>
+                <th className="text-left py-2 text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Description</th>
+                <th className="text-right py-2 text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Qty</th>
+                <th className="text-right py-2 text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Unit</th>
+                <th className="text-right py-2 text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {(invoice.detalles || []).map((line, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid rgba(247, 242, 233, 0.08)' }}>
-                  <td className="py-2.5 pr-2" style={{ color: '#f7f2e9' }}>{line.productoNombre}</td>
+                  <td className="py-2.5 pr-2 text-[15px]" style={{ color: '#f7f2e9' }}>{line.productoNombre}</td>
                   <td className="py-2.5 text-right" style={{ color: '#a7afbc' }}>{line.cantidad}</td>
                   <td className="py-2.5 text-right" style={{ color: '#a7afbc' }}>{money(line.precioUnitario)}</td>
                   <td className="py-2.5 text-right" style={{ color: '#f7f2e9' }}>{money(line.subtotal)}</td>
@@ -135,36 +137,36 @@ export default function InvoiceView({
 
         <div className="px-7 py-5 flex justify-end">
           <div className="w-56 rounded-xl px-4 py-3" style={{ background: 'rgba(146, 98, 8, 0.12)', border: '1px solid rgba(146, 98, 8, 0.28)' }}>
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Total</p>
-            <p className="font-display text-3xl" style={{ color: '#f7f2e9' }}>{money(invoice.total)}</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Total</p>
+            <p className="font-display text-[2.1rem]" style={{ color: '#f7f2e9' }}>{money(invoice.total)}</p>
           </div>
         </div>
 
         {invoice.pago && (
           <div className="mx-7 mb-5 rounded-xl px-4 py-3 grid grid-cols-2 gap-3" style={{ background: '#10243d', border: '1px solid rgba(146, 98, 8, 0.2)' }}>
             <div>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Payment</p>
-              <p style={{ color: '#f7f2e9' }}>{methodLabel(invoice.pago.metodoPago)}</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Payment</p>
+              <p className="text-[15px]" style={{ color: '#f7f2e9' }}>{methodLabel(invoice.pago.metodoPago)}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Cashier</p>
-              <p style={{ color: '#f7f2e9' }}>{invoice.pago.cajeroNombre || '—'}</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Cashier</p>
+              <p className="text-[15px]" style={{ color: '#f7f2e9' }}>{invoice.pago.cajeroNombre || '—'}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Received</p>
-              <p style={{ color: '#f7f2e9' }}>{money(invoice.pago.monto)}</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Received</p>
+              <p className="text-[15px]" style={{ color: '#f7f2e9' }}>{money(invoice.pago.monto)}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: '#926208' }}>Change</p>
-              <p style={{ color: '#f7f2e9' }}>{money(invoice.pago.cambio)}</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#926208' }}>Change</p>
+              <p className="text-[15px]" style={{ color: '#f7f2e9' }}>{money(invoice.pago.cambio)}</p>
             </div>
           </div>
         )}
 
-        <p className="px-7 pb-2 text-center italic text-sm" style={{ color: '#926208' }}>
+        <p className="px-7 pb-2 text-center italic text-base" style={{ color: '#926208' }}>
           The best moments are shared here
         </p>
-        <p className="px-7 pb-4 text-center text-[10px] uppercase tracking-widest" style={{ color: '#a7afbc' }}>
+        <p className="px-7 pb-4 text-center text-xs uppercase tracking-widest" style={{ color: '#a7afbc' }}>
           On-screen invoice · Terraza Premium
         </p>
 

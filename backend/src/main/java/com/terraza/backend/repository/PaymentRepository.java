@@ -47,11 +47,16 @@ public class PaymentRepository {
         return jdbc.query("""
                 SELECT p.id AS pedido_id, p.sede_id, s.nombre AS sede_nombre, p.mesa_id,
                        me.numero AS mesa_numero, u.nombre AS mesero_nombre, p.estado, p.total,
-                       p.fecha_apertura, p.fecha_cierre
+                       p.fecha_apertura, p.fecha_cierre,
+                       c.nombre AS cajero_nombre, pg.metodo_pago
                 FROM pedidos p
                 JOIN sedes s ON s.id = p.sede_id
                 JOIN usuarios u ON u.id = p.mesero_id
+                LEFT JOIN usuarios c ON c.id = p.cajero_id
                 LEFT JOIN mesas me ON me.id = p.mesa_id
+                LEFT JOIN pagos pg ON pg.id = (
+                    SELECT px.id FROM pagos px WHERE px.pedido_id = p.id ORDER BY px.fecha_pago DESC LIMIT 1
+                )
                 WHERE p.sede_id = ? AND p.estado = 'CERRADO'
                 ORDER BY p.fecha_cierre DESC NULLS LAST, p.id DESC
                 """, (rs, rowNum) -> mapFactura(rs), sedeId);
@@ -61,11 +66,16 @@ public class PaymentRepository {
         return jdbc.query("""
                 SELECT p.id AS pedido_id, p.sede_id, s.nombre AS sede_nombre, p.mesa_id,
                        me.numero AS mesa_numero, u.nombre AS mesero_nombre, p.estado, p.total,
-                       p.fecha_apertura, p.fecha_cierre
+                       p.fecha_apertura, p.fecha_cierre,
+                       c.nombre AS cajero_nombre, pg.metodo_pago
                 FROM pedidos p
                 JOIN sedes s ON s.id = p.sede_id
                 JOIN usuarios u ON u.id = p.mesero_id
+                LEFT JOIN usuarios c ON c.id = p.cajero_id
                 LEFT JOIN mesas me ON me.id = p.mesa_id
+                LEFT JOIN pagos pg ON pg.id = (
+                    SELECT px.id FROM pagos px WHERE px.pedido_id = p.id ORDER BY px.fecha_pago DESC LIMIT 1
+                )
                 WHERE p.id = ?
                 """, (rs, rowNum) -> mapFactura(rs), pedidoId).stream().findFirst();
     }
@@ -101,6 +111,8 @@ public class PaymentRepository {
         factura.setMesaId(JdbcValues.longOrNull(rs, "mesa_id"));
         factura.setMesaNumero(JdbcValues.integerOrNull(rs, "mesa_numero"));
         factura.setMeseroNombre(rs.getString("mesero_nombre"));
+        factura.setCajeroNombre(rs.getString("cajero_nombre"));
+        factura.setMetodoPago(rs.getString("metodo_pago"));
         factura.setEstado(rs.getString("estado"));
         factura.setTotal(rs.getBigDecimal("total"));
         factura.setFechaApertura(JdbcValues.dateTimeOrNull(rs, "fecha_apertura"));

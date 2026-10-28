@@ -5,7 +5,8 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import PageShell from '../../components/PageShell';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 import { roleLabel } from '../../types';
-import { branchLabel, formatMoney } from '../../lib/format';
+import { branchLabel, formatDateTime, formatMoney, paymentMethodLabel } from '../../lib/format';
+import { downloadCsv, downloadExcel } from '../../lib/export';
 import AppLayout from '../../components/AppLayout';
 import InvoiceView, { type Invoice } from '../../components/InvoiceView';
 import ReportsPanel from '../../components/ReportsPanel';
@@ -111,6 +112,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(''), 10000);
+    return () => window.clearTimeout(t);
+  }, [message]);
+
+  const goTab = (key: Tab) => {
+    setMessage('');
+    setError('');
+    setTab(key);
+  };
 
   const [userModal, setUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -477,7 +490,7 @@ export default function Dashboard() {
         <>
           <p className="app-side-role">Management</p>
           {tabs.map((t) => (
-            <button key={t.key} type="button" onClick={() => setTab(t.key)} className={`app-nav-btn${tab === t.key ? ' is-active' : ''}`}>
+            <button key={t.key} type="button" onClick={() => goTab(t.key)} className={`app-nav-btn${tab === t.key ? ' is-active' : ''}`}>
               {t.label}
             </button>
           ))}
@@ -491,8 +504,8 @@ export default function Dashboard() {
       ]}
     >
         {message && (
-          <div className="mb-6 px-4 py-3 rounded-lg text-sm border-l-4"
-               style={{ background: 'rgba(34,120,70,0.18)', borderColor: '#16a34a', color: '#b7e4c7' }}>
+          <div className="mb-6 px-4 py-3 rounded-lg text-base font-medium border-l-4"
+               style={{ background: '#dcfce7', borderColor: '#15803d', color: '#14532d' }}>
             {message}
           </div>
         )}
@@ -508,10 +521,10 @@ export default function Dashboard() {
             {tabs.map((t) => (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => goTab(t.key)}
                 className="px-4 py-2 rounded-lg border text-sm transition-all whitespace-nowrap"
               style={{
-                  background: tab === t.key ? 'var(--bar-gold)' : 'transparent',
+                  background: tab === t.key ? 'var(--bar-gold)' : '#10243d',
                   color: tab === t.key ? '#07121c' : '#f7f2e9',
                   borderColor: 'rgba(146, 98, 8,0.35)',
               }}
@@ -704,7 +717,7 @@ export default function Dashboard() {
                     <tr key={t.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                       <td className="px-6 py-4 font-medium">{t.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{t.descripcion || '—'}</td>
-                      <td className="px-6 py-4 text-right space-x-2">
+                      <td className="px-6 py-4 text-right whitespace-nowrap space-x-2">
                         <button type="button" onClick={() => openEditType(t)}
                           className="text-sm px-3 py-1.5 rounded-lg border">Edit</button>
                         <button type="button" onClick={() => setPendingType(t)}
@@ -719,7 +732,55 @@ export default function Dashboard() {
             {tab === 'reports' && (
               <div className="p-6 space-y-6">
                 <ReportsPanel sedeId={localStorage.getItem('sedeId') || '1'} allowAllBranches />
-                <h3 className="font-display text-xl" style={{ color: 'var(--bar-dark)' }}>Closed invoices</h3>
+                <h3 className="font-display text-xl" style={{ color: '#f7f2e9' }}>Closed invoices</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => {
+                    const headers = [
+                      'Invoice number',
+                      'Table',
+                      'Branch',
+                      'Waiter',
+                      'Cashier',
+                      'Payment method',
+                      'Total (COP)',
+                      'Closed at',
+                    ];
+                    const rows = invoices.map((row) => [
+                      row.pedidoId,
+                      row.mesaNumero ?? '',
+                      row.sedeNombre || '',
+                      row.meseroNombre || '',
+                      row.cajeroNombre || row.pago?.cajeroNombre || '',
+                      paymentMethodLabel(row.metodoPago || row.pago?.metodoPago),
+                      Math.round(Number(row.total) || 0),
+                      formatDateTime(row.fechaCierre),
+                    ]);
+                    downloadCsv('invoices', headers, rows);
+                  }}>Invoices CSV</button>
+                  <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => {
+                    const headers = [
+                      'Invoice number',
+                      'Table',
+                      'Branch',
+                      'Waiter',
+                      'Cashier',
+                      'Payment method',
+                      'Total (COP)',
+                      'Closed at',
+                    ];
+                    const rows = invoices.map((row) => [
+                      row.pedidoId,
+                      row.mesaNumero ?? '',
+                      row.sedeNombre || '',
+                      row.meseroNombre || '',
+                      row.cajeroNombre || row.pago?.cajeroNombre || '',
+                      paymentMethodLabel(row.metodoPago || row.pago?.metodoPago),
+                      Math.round(Number(row.total) || 0),
+                      formatDateTime(row.fechaCierre),
+                    ]);
+                    downloadExcel('invoices', headers, rows, 'Invoices');
+                  }}>Invoices Excel</button>
+                </div>
                 {invoices.length === 0 ? (
                   <p className="text-gray-400 text-sm">No invoices yet.</p>
                 ) : (
@@ -729,6 +790,7 @@ export default function Dashboard() {
                         <th>Invoice</th>
                         <th>Table</th>
                         <th>Waiter</th>
+                        <th>Cashier</th>
                         <th>Total</th>
                         <th>Actions</th>
                       </tr>
@@ -739,6 +801,7 @@ export default function Dashboard() {
                           <td>#{row.pedidoId}</td>
                           <td>{row.mesaNumero ?? '—'}</td>
                           <td>{row.meseroNombre || '—'}</td>
+                          <td>{row.cajeroNombre || row.pago?.cajeroNombre || '—'}</td>
                           <td className="text-right">{formatMoney(row.total)}</td>
                           <td>
                             <button type="button" className="text-sm px-3 py-1.5 rounded-lg border" onClick={async () => {
@@ -779,21 +842,23 @@ export default function Dashboard() {
             </label>
             <label className="block mb-3">
               <span className="text-xs uppercase tracking-widest text-gray-600">
-                Password {editingUser ? '(leave empty to keep)' : ''}
+                Password
               </span>
               <div className="relative">
                 <input
-                  className={`${field} pr-11`}
+                  className={`${field} pr-12`}
                   type={showUserPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={userForm.password}
                   onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                 />
                 <button
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => setShowUserPassword((visible) => !visible)}
                   aria-label={showUserPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-[calc(50%+2px)] -translate-y-1/2"
-                  style={{ color: '#a7afbc' }}
+                  className="absolute right-2 top-1/2 z-20 -translate-y-1/2 p-1"
+                  style={{ color: '#c9a227' }}
                 >
                   {showUserPassword ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

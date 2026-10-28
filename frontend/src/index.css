@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap');
 
+@theme {
+  --text-xs: 0.84rem;
+  --text-sm: 0.98rem;
+  --text-base: 1.05rem;
+}
+
 :root {
   --bar-ink: #071525;
   --bar-dark: #071525;
@@ -13,12 +19,21 @@
   --bar-red: #8b2c2c;
 }
 
+html {
+  font-size: 17.5px;
+}
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
   background:
     radial-gradient(1100px 480px at 88% -8%, rgba(146, 98, 8, 0.16), transparent 55%),
     #071525;
   color: #f7f2e9;
+}
+
+.text-\[10px\] {
+  font-size: 0.78rem !important;
 }
 
 .font-display {
@@ -57,7 +72,7 @@ body {
 .app-surface .text-gray-600,
 .app-surface .text-gray-500,
 .app-surface .text-gray-400 {
-  color: #a7afbc;
+  color: #c5cbd4;
 }
 
 .app-surface .bg-white {
@@ -86,6 +101,7 @@ body {
 
 .app-surface table td {
   color: #f7f2e9;
+  font-size: 0.98rem;
 }
 
 .app-surface option {
