@@ -6,6 +6,7 @@ import com.terraza.backend.dto.UsuarioDTO;
 import com.terraza.backend.exception.BusinessException;
 import com.terraza.backend.model.Usuario;
 import com.terraza.backend.repository.UsuarioRepository;
+import com.terraza.backend.security.LoginRateLimiter;
 import com.terraza.backend.security.UsuarioPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,10 +36,12 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final AuditoriaService auditoriaService;
     private final UsuarioRepository usuarioRepository;
+    private final LoginRateLimiter loginRateLimiter;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
     public UsuarioDTO login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        loginRateLimiter.check(email);
         Optional<Usuario> existente = usuarioRepository.findByEmail(email);
 
         Authentication authentication;
@@ -46,6 +49,7 @@ public class AuthService {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, request.getPassword()));
         } catch (BadCredentialsException ex) {
+            loginRateLimiter.recordFailure(email);
             auditoriaService.registrar(
                     existente.map(Usuario::getId).orElse(null),
                     existente.map(Usuario::getSedeId).orElse(null),
@@ -53,6 +57,7 @@ public class AuthService {
                     "Invalid credentials");
             throw ex;
         } catch (AuthenticationException ex) {
+            loginRateLimiter.recordFailure(email);
             auditoriaService.registrar(
                     existente.map(Usuario::getId).orElse(null),
                     existente.map(Usuario::getSedeId).orElse(null),
@@ -60,6 +65,7 @@ public class AuthService {
                     "Authentication rejected");
             throw ex;
         }
+        loginRateLimiter.clear(email);
 
         if (authentication.getPrincipal() instanceof UsuarioPrincipal principal) {
             principal.getUsuario().setPassword(null);

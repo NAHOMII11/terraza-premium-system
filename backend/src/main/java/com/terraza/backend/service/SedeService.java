@@ -76,6 +76,26 @@ public class SedeService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Branch not found"));
     }
 
+    @Transactional
+    public void eliminar(Long id) {
+        Sede sede = sedeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Branch not found"));
+        if (!Boolean.TRUE.equals(sede.getActivo())) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "Branch not found");
+        }
+        if (sedeRepository.contarActivas() <= 1) {
+            throw new BusinessException(HttpStatus.CONFLICT, "You cannot delete the last branch");
+        }
+        if (sedeRepository.contarUsuarios(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, "This branch cannot be deleted because it has users");
+        }
+        if (sedeRepository.contarPedidosAbiertos(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, "This branch cannot be deleted because it has open orders");
+        }
+        sedeRepository.desactivar(id);
+        auditoriaService.registrar("ELIMINAR_SEDE", "Sede desactivada: " + sede.getNombre());
+    }
+
     private int cantidadMesas(SedeRequest request, int valorPorDefecto) {
         Integer mesas = request.getMesas();
         return mesas == null ? valorPorDefecto : mesas;

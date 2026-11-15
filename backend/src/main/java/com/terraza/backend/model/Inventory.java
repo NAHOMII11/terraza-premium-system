@@ -15,4 +15,6 @@ public class Inventory {
     private String codigoProducto;
     private Long sedeId;
     private Integer stock;
+    private java.math.BigDecimal valorCompra;
+    private java.math.BigDecimal valorVenta;
 }

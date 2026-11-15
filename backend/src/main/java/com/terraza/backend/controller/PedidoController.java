@@ -51,6 +51,12 @@ public class PedidoController {
         return pedidoService.listarActivos(sedeId, principal(authentication));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO', 'MESERO')")
+    public Pedido obtener(@PathVariable Long id, Authentication authentication) {
+        return pedidoService.obtener(id, principal(authentication));
+    }
+
     private UsuarioPrincipal principal(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof UsuarioPrincipal principal)) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "Authentication required");

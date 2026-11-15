@@ -1,7 +1,10 @@
 package com.terraza.backend.service;
 
+import com.terraza.backend.algorithm.KnapsackAlgorithm;
+import com.terraza.backend.algorithm.LowStockAlgorithm;
 import com.terraza.backend.dto.CrearInventoryDTO;
 import com.terraza.backend.dto.InventoryDTO;
+import com.terraza.backend.dto.KnapsackPlanDTO;
 import com.terraza.backend.exception.BusinessException;
 import com.terraza.backend.model.Inventory;
 import com.terraza.backend.repository.InventoryRepository;
@@ -13,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -29,6 +34,47 @@ public class InventoryService {
         exigirAccesoSede(principal, sedeId);
         exigirSede(sedeId);
         return inventoryRepository.listarPorSede(sedeId).stream().map(InventoryDTO::from).toList();
+    }
+
+    public KnapsackPlanDTO restockPlan(Long sedeId, Integer budget, UsuarioPrincipal principal) {
+        exigirAccesoSede(principal, sedeId);
+        exigirSede(sedeId);
+        int capacity = budget == null || budget < 1 ? 100_000 : Math.min(budget, 5_000_000);
+        List<KnapsackAlgorithm.Item> candidates = new ArrayList<>();
+        List<Inventory> rows = inventoryRepository.listarPorSede(sedeId);
+        boolean onlyLow = rows.stream().anyMatch(row -> LowStockAlgorithm.isLow(row.getStock()));
+        for (Inventory row : rows) {
+            if (onlyLow && !LowStockAlgorithm.isLow(row.getStock())) {
+                continue;
+            }
+            int cost = money(row.getValorCompra());
+            int sale = money(row.getValorVenta());
+            int margin = Math.max(0, sale - cost);
+            if (cost > 0 && margin > 0) {
+                candidates.add(new KnapsackAlgorithm.Item(row.getProductoId(), row.getNombreProducto(), cost, margin));
+            }
+        }
+        KnapsackAlgorithm.Result packed = KnapsackAlgorithm.pack(candidates, capacity);
+        return KnapsackPlanDTO.builder()
+                .budget(capacity)
+                .totalCost(packed.totalWeight())
+                .totalMargin(packed.totalValue())
+                .items(packed.chosen().stream()
+                        .map(item -> KnapsackPlanDTO.Item.builder()
+                                .productoId(item.id())
+                                .nombre(item.name())
+                                .cost(item.weight())
+                                .margin(item.value())
+                                .build())
+                        .toList())
+                .build();
+    }
+
+    private static int money(BigDecimal value) {
+        if (value == null) {
+            return 0;
+        }
+        return value.setScale(0, java.math.RoundingMode.HALF_UP).intValue();
     }
 
     @Transactional

@@ -54,7 +54,7 @@ public class InventoryRepository {
     private String sqlInventario() {
         return """
                 SELECT i.id, i.producto_id, p.nombre AS nombre_producto, p.codigo AS codigo_producto,
-                       i.sede_id, i.stock
+                       i.sede_id, i.stock, p.valor_compra, p.valor_venta
                 FROM inventario i
                 JOIN productos p ON p.id = i.producto_id
                 """;
@@ -68,6 +68,8 @@ public class InventoryRepository {
         inventory.setCodigoProducto(rs.getString("codigo_producto"));
         inventory.setSedeId(rs.getLong("sede_id"));
         inventory.setStock(rs.getInt("stock"));
+        inventory.setValorCompra(rs.getBigDecimal("valor_compra"));
+        inventory.setValorVenta(rs.getBigDecimal("valor_venta"));
         return inventory;
     }
 }

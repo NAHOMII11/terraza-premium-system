@@ -49,6 +49,22 @@ public class SupplierRepository {
                 """, nombre, nit, contacto, telefono, email, direccion, id);
     }
 
+    public int contarProductosActivos(Long id) {
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM productos WHERE proveedor_id = ? AND active = TRUE",
+                Integer.class,
+                id);
+        return total == null ? 0 : total;
+    }
+
+    public int desactivar(Long id) {
+        return jdbc.update("""
+                UPDATE proveedores
+                SET active = FALSE, updated_at = NOW()
+                WHERE id = ? AND active = TRUE
+                """, id);
+    }
+
     public Long insertar(String nombre, String nit, String contacto, String telefono, String email, String direccion) {
         return jdbc.queryForObject("""
                 INSERT INTO proveedores (nombre, nit, contacto, telefono, email, direccion, active)

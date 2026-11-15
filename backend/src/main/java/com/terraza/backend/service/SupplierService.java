@@ -65,6 +65,19 @@ public class SupplierService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found")));
     }
 
+    @Transactional
+    public void eliminar(Long id) {
+        supplierRepository.buscarPorId(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found"));
+        if (supplierRepository.contarProductosActivos(id) > 0) {
+            throw new BusinessException(HttpStatus.CONFLICT, "This supplier cannot be deleted because it has products");
+        }
+        if (supplierRepository.desactivar(id) == 0) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "Supplier not found");
+        }
+        auditoriaService.registrar("ELIMINAR_PROVEEDOR", "Proveedor desactivado: " + id);
+    }
+
     private String limpiar(String valor) {
         if (valor == null || valor.isBlank()) {
             return null;

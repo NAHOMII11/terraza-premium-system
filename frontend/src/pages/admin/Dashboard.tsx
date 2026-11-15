@@ -10,6 +10,7 @@ import { downloadCsv, downloadExcel } from '../../lib/export';
 import AppLayout from '../../components/AppLayout';
 import InvoiceView, { type Invoice } from '../../components/InvoiceView';
 import ReportsPanel from '../../components/ReportsPanel';
+import QualityPanel from '../../components/QualityPanel';
 
 interface User {
   id: number;
@@ -58,7 +59,7 @@ interface Supplier {
   direccion?: string;
 }
 
-type Tab = 'users' | 'branches' | 'products' | 'suppliers' | 'types' | 'reports';
+type Tab = 'users' | 'branches' | 'products' | 'suppliers' | 'types' | 'reports' | 'quality';
 
 function apiMessage(err: unknown, fallback: string) {
   const e = err as { response?: { data?: { message?: string; error?: string } } };
@@ -107,6 +108,7 @@ export default function Dashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState('');
   const [types, setTypes] = useState<ProductType[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +150,9 @@ export default function Dashboard() {
   const [editingType, setEditingType] = useState<ProductType | null>(null);
   const [typeForm, setTypeForm] = useState({ nombre: '', descripcion: '' });
   const [pendingType, setPendingType] = useState<ProductType | null>(null);
+  const [pendingBranch, setPendingBranch] = useState<Branch | null>(null);
+  const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [pendingSupplier, setPendingSupplier] = useState<Supplier | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [inventory, setInventory] = useState<{ id: number; productoNombre?: string; cantidad?: number; stock?: number }[]>([]);
@@ -338,6 +343,51 @@ export default function Dashboard() {
     }
   };
 
+  const deleteBranch = async () => {
+    if (!pendingBranch) return;
+    setError('');
+    setMessage('');
+    try {
+      await api.delete(`/api/branches/${pendingBranch.id}`);
+      setMessage('Branch deleted');
+      setPendingBranch(null);
+      load();
+    } catch (err) {
+      setPendingBranch(null);
+      setError(apiMessage(err, 'Could not delete branch'));
+    }
+  };
+
+  const deleteProduct = async () => {
+    if (!pendingProduct) return;
+    setError('');
+    setMessage('');
+    try {
+      await api.delete(`/api/products/${pendingProduct.id}`);
+      setMessage('Product deleted');
+      setPendingProduct(null);
+      load();
+    } catch (err) {
+      setPendingProduct(null);
+      setError(apiMessage(err, 'Could not delete product'));
+    }
+  };
+
+  const deleteSupplier = async () => {
+    if (!pendingSupplier) return;
+    setError('');
+    setMessage('');
+    try {
+      await api.delete(`/api/suppliers/${pendingSupplier.id}`);
+      setMessage('Supplier deleted');
+      setPendingSupplier(null);
+      load();
+    } catch (err) {
+      setPendingSupplier(null);
+      setError(apiMessage(err, 'Could not delete supplier'));
+    }
+  };
+
   const deleteType = async () => {
     if (!pendingType) return;
     setError('');
@@ -479,7 +529,17 @@ export default function Dashboard() {
     { key: 'suppliers', label: `Suppliers (${suppliers.length})` },
     { key: 'types', label: `Types (${types.length})` },
     { key: 'reports', label: 'Reports' },
+    { key: 'quality', label: 'Quality' },
   ];
+
+  const filteredProducts = products.filter((p) => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (p.nombre || '').toLowerCase().includes(q) ||
+      (p.codigo || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <PageShell>
@@ -546,10 +606,20 @@ export default function Dashboard() {
             </button>
           )}
           {tab === 'products' && (
-            <button type="button" onClick={openNewProduct}
-              className="gold-btn">
-              Add product
-            </button>
+            <div className="flex flex-wrap items-center gap-3 w-full justify-between">
+              <input
+                type="text"
+                placeholder="Search product..."
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
+                style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+              />
+              <button type="button" onClick={openNewProduct}
+                className="gold-btn">
+                Add product
+              </button>
+            </div>
           )}
           {tab === 'suppliers' && (
             <button type="button" onClick={openNewSupplier}
@@ -634,9 +704,11 @@ export default function Dashboard() {
                       <td className="px-6 py-4 text-sm text-gray-600">{branchLabel(b.direccion)}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{b.ciudad}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{b.telefono || '—'}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right whitespace-nowrap space-x-2">
                         <button type="button" onClick={() => openEditBranch(b)}
                           className="text-sm px-3 py-1.5 rounded-lg border">Edit</button>
+                        <button type="button" onClick={() => setPendingBranch(b)}
+                          className="text-sm px-3 py-1.5 rounded-lg border">Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -646,6 +718,9 @@ export default function Dashboard() {
 
             {tab === 'products' && (
               <div className="max-h-96 overflow-y-auto">
+                {filteredProducts.length === 0 ? (
+                  <p className="px-6 py-8 text-sm text-gray-400">No products.</p>
+                ) : (
                 <table className="premium-table">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
@@ -656,7 +731,7 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((p) => (
+                    {filteredProducts.map((p) => (
                       <tr key={p.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                         <td className="px-6 py-3 text-sm text-gray-500">{p.codigo || `#${p.id}`}</td>
                         <td className="px-6 py-3">{p.nombre}</td>
@@ -664,14 +739,17 @@ export default function Dashboard() {
                             style={{ color: 'var(--bar-amber)' }}>
                           {formatMoney(p.precio || p.valorVenta || 0)}
                         </td>
-                        <td className="px-6 py-3 text-right">
+                        <td className="px-6 py-3 text-right whitespace-nowrap space-x-2">
                           <button type="button" onClick={() => openEditProduct(p)}
                             className="text-sm px-3 py-1.5 rounded-lg border">Edit</button>
+                          <button type="button" onClick={() => setPendingProduct(p)}
+                            className="text-sm px-3 py-1.5 rounded-lg border">Delete</button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                )}
               </div>
             )}
 
@@ -693,9 +771,11 @@ export default function Dashboard() {
                       <td className="px-6 py-4 text-sm text-gray-600">{s.nit || '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{s.contacto || '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{s.telefono || '—'}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right whitespace-nowrap space-x-2">
                         <button type="button" onClick={() => openEditSupplier(s)}
                           className="text-sm px-3 py-1.5 rounded-lg border">Edit</button>
+                        <button type="button" onClick={() => setPendingSupplier(s)}
+                          className="text-sm px-3 py-1.5 rounded-lg border">Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -728,6 +808,8 @@ export default function Dashboard() {
                 </tbody>
               </table>
             )}
+
+            {tab === 'quality' && <QualityPanel />}
 
             {tab === 'reports' && (
               <div className="p-6 space-y-6">
@@ -1112,6 +1194,30 @@ export default function Dashboard() {
         message={pendingUser ? `${pendingUser.activo === false ? 'Activate' : 'Deactivate'} ${pendingUser.nombre}?` : ''}
         onConfirm={toggleUser}
         onCancel={() => setPendingUser(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingBranch}
+        title="Delete branch"
+        message={pendingBranch ? `Delete ${branchLabel(pendingBranch.nombre)}?` : ''}
+        confirmLabel="Delete"
+        onConfirm={deleteBranch}
+        onCancel={() => setPendingBranch(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingProduct}
+        title="Delete product"
+        message={pendingProduct ? `Delete ${pendingProduct.nombre}?` : ''}
+        confirmLabel="Delete"
+        onConfirm={deleteProduct}
+        onCancel={() => setPendingProduct(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingSupplier}
+        title="Delete supplier"
+        message={pendingSupplier ? `Delete ${pendingSupplier.nombre}?` : ''}
+        confirmLabel="Delete"
+        onConfirm={deleteSupplier}
+        onCancel={() => setPendingSupplier(null)}
       />
       <ConfirmDialog
         open={!!pendingType}

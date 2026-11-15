@@ -1,5 +1,6 @@
 -- Terraza Premium (Zenith Tech Studio)
--- MER de 12 tablas para PostgreSQL 15.
+-- MER de 12 tablas (roles, sedes, usuarios, tipos_producto, proveedores,
+-- productos, inventario, mesas, pedidos, detalle_pedido, pagos, auditoria).
 -- Este script no lo ejecuta Spring Boot. Lo aplica Julián sobre terraza_premium.
 -- No incluye productos, mesas ni inventario.
 
@@ -124,7 +125,7 @@ CREATE TABLE IF NOT EXISTS detalle_pedido (
 
 CREATE TABLE IF NOT EXISTS pagos (
     id SERIAL PRIMARY KEY,
-    pedido_id INTEGER NOT NULL REFERENCES pedidos (id),
+    pedido_id INTEGER NOT NULL UNIQUE REFERENCES pedidos (id),
     cajero_id INTEGER NOT NULL REFERENCES usuarios (id),
     metodo_pago VARCHAR(30) NOT NULL CHECK (metodo_pago IN ('EFECTIVO', 'TARJETA_CREDITO', 'TARJETA_DEBITO')),
     monto DECIMAL(12, 2) NOT NULL CHECK (monto >= 0),
@@ -148,6 +149,16 @@ CREATE TABLE IF NOT EXISTS auditoria (
 
 CREATE INDEX IF NOT EXISTS idx_pedidos_sede_estado ON pedidos (sede_id, estado);
 CREATE INDEX IF NOT EXISTS idx_inventario_producto ON inventario (producto_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios (rol_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_sede ON usuarios (sede_id);
+CREATE INDEX IF NOT EXISTS idx_productos_tipo ON productos (tipo_producto_id);
+CREATE INDEX IF NOT EXISTS idx_productos_proveedor ON productos (proveedor_id);
+CREATE INDEX IF NOT EXISTS idx_mesas_sede ON mesas (sede_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_mesa ON pedidos (mesa_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_mesero ON pedidos (mesero_id);
+CREATE INDEX IF NOT EXISTS idx_detalle_pedido ON detalle_pedido (pedido_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_cajero ON pagos (cajero_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON auditoria (usuario_id);
 
 -- Catálogo mínimo para la clave foránea del administrador.
 -- Sin estos registros el INSERT del admin no puede cumplirse.

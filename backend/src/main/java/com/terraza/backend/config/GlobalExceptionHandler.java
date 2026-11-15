@@ -50,7 +50,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiError> handleDisabled(DisabledException ex, WebRequest request) {
         log.warn("Intento de acceso de un usuario inactivo");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(apiError(HttpStatus.UNAUTHORIZED, "Inactive user", request, null));
+                .body(apiError(HttpStatus.UNAUTHORIZED, "This account is deactivated.", request, null));
     }
 
     @ExceptionHandler(LockedException.class)

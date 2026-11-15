@@ -3,6 +3,7 @@ package com.terraza.backend.controller;
 import com.terraza.backend.dto.ActualizarStockDTO;
 import com.terraza.backend.dto.CrearInventoryDTO;
 import com.terraza.backend.dto.InventoryDTO;
+import com.terraza.backend.dto.KnapsackPlanDTO;
 import com.terraza.backend.exception.BusinessException;
 import com.terraza.backend.security.UsuarioPrincipal;
 import com.terraza.backend.service.InventoryService;
@@ -36,6 +37,15 @@ public class InventoryController {
             @RequestParam Long sedeId,
             Authentication authentication) {
         return ResponseEntity.ok(inventoryService.listarPorSede(sedeId, principal(authentication)));
+    }
+
+    @GetMapping("/restock-plan")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO')")
+    public KnapsackPlanDTO restockPlan(
+            @RequestParam Long sedeId,
+            @RequestParam(required = false) Integer budget,
+            Authentication authentication) {
+        return inventoryService.restockPlan(sedeId, budget, principal(authentication));
     }
 
     @PostMapping

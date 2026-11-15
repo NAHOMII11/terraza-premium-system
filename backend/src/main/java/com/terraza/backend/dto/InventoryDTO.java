@@ -1,5 +1,6 @@
 package com.terraza.backend.dto;
 
+import com.terraza.backend.algorithm.LowStockAlgorithm;
 import com.terraza.backend.model.Inventory;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,6 +15,7 @@ public class InventoryDTO {
     private final String codigoProducto;
     private final Long sedeId;
     private final Integer stock;
+    private final boolean stockBajo;
 
     public String getProductoNombre() {
         return nombreProducto;
@@ -31,6 +33,7 @@ public class InventoryDTO {
                 .codigoProducto(inventory.getCodigoProducto())
                 .sedeId(inventory.getSedeId())
                 .stock(inventory.getStock())
+                .stockBajo(LowStockAlgorithm.isLow(inventory.getStock()))
                 .build();
     }
 }

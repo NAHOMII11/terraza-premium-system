@@ -28,4 +28,5 @@ public class InvoiceDTO {
     private LocalDateTime fechaCierre;
     private List<InvoiceLineDTO> detalles = new ArrayList<>();
     private InvoicePaymentDTO pago;
+    private String hashSha256;
 }

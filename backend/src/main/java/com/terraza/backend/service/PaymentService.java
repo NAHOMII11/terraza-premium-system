@@ -1,12 +1,14 @@
 package com.terraza.backend.service;
 
+import com.terraza.backend.algorithm.ChangeMakingAlgorithm;
+import com.terraza.backend.algorithm.Sha256Algorithm;
 import com.terraza.backend.dto.CreatePaymentDTO;
+import com.terraza.backend.dto.DenominationDTO;
 import com.terraza.backend.dto.InvoiceDTO;
 import com.terraza.backend.dto.InvoicePaymentDTO;
 import com.terraza.backend.dto.PaymentDTO;
 import com.terraza.backend.exception.BusinessException;
 import com.terraza.backend.model.Mesa;
-import com.terraza.backend.model.Payment;
 import com.terraza.backend.model.Pedido;
 import com.terraza.backend.model.Usuario;
 import com.terraza.backend.repository.MesaRepository;
@@ -20,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -38,13 +40,17 @@ public class PaymentService {
         Pedido pedido = pedidoAbierto(request.getPedidoId());
         exigirAccesoSede(principal, pedido.getSedeId());
         Usuario cajero = cajeroValido(request.getCajeroId(), principal, pedido.getSedeId());
-        BigDecimal cambio = calcularCambio(request.getMetodoPago(), request.getMonto(), pedido.getTotal());
+        BigDecimal cambio = ChangeMakingAlgorithm.change(request.getMetodoPago(), request.getMonto(), pedido.getTotal());
         rechazarPagoDuplicado(pedido.getId());
         paymentRepository.insertar(pedido.getId(), cajero.getId(), request.getMetodoPago(), request.getMonto(), cambio);
         cerrarPedido(pedido.getId(), cajero.getId());
         liberarMesa(pedido.getMesaId());
         auditoriaService.registrar("REGISTRAR_PAGO", "Pago del pedido " + pedido.getId() + " por " + request.getMetodoPago());
-        return new PaymentDTO("Payment registered", cambio);
+        List<DenominationDTO> desglose = ChangeMakingAlgorithm.breakdown(cambio).entrySet().stream()
+                .filter(entry -> entry.getValue() > 0)
+                .map(entry -> new DenominationDTO(entry.getKey(), entry.getValue()))
+                .toList();
+        return new PaymentDTO("Payment registered", cambio, desglose);
     }
 
     public java.util.List<InvoiceDTO> listarFacturas(Long sedeId, UsuarioPrincipal principal) {
@@ -59,6 +65,7 @@ public class PaymentService {
         exigirAccesoSede(principal, factura.getSedeId());
         factura.setDetalles(paymentRepository.listarLineas(orderId));
         paymentRepository.buscarPagoPorPedido(orderId).map(InvoicePaymentDTO::from).ifPresent(factura::setPago);
+        factura.setHashSha256(Sha256Algorithm.digest(payloadFactura(factura)));
         auditoriaService.registrar("CONSULTAR_FACTURA", "Factura del pedido " + orderId);
         return factura;
     }
@@ -107,30 +114,6 @@ public class PaymentService {
         }
     }
 
-    // El efectivo puede superar el total y devuelve cambio. La tarjeta debe coincidir exacto.
-    private BigDecimal calcularCambio(String metodo, BigDecimal monto, BigDecimal total) {
-        BigDecimal pagado = monto.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal esperado = total.setScale(2, RoundingMode.HALF_UP);
-        if (Payment.EFECTIVO.equals(metodo)) {
-            return cambioEfectivo(pagado, esperado);
-        }
-        return cambioTarjeta(pagado, esperado);
-    }
-
-    private BigDecimal cambioEfectivo(BigDecimal pagado, BigDecimal esperado) {
-        if (pagado.compareTo(esperado) < 0) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "The amount does not cover the order total");
-        }
-        return pagado.subtract(esperado);
-    }
-
-    private BigDecimal cambioTarjeta(BigDecimal pagado, BigDecimal esperado) {
-        if (pagado.compareTo(esperado) != 0) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "Card amount must match the order total");
-        }
-        return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-    }
-
     private void rechazarPagoDuplicado(Long pedidoId) {
         if (paymentRepository.existePago(pedidoId)) {
             throw new BusinessException(HttpStatus.CONFLICT, "The order already has a payment");
@@ -148,6 +131,24 @@ public class PaymentService {
             return;
         }
         mesaRepository.actualizarEstado(mesaId, Mesa.DISPONIBLE);
+    }
+
+    private String payloadFactura(InvoiceDTO factura) {
+        StringBuilder payload = new StringBuilder();
+        payload.append(factura.getPedidoId()).append('|')
+                .append(factura.getSedeNombre()).append('|')
+                .append(factura.getTotal()).append('|')
+                .append(factura.getEstado());
+        if (factura.getDetalles() != null) {
+            factura.getDetalles().forEach(line -> payload
+                    .append('|')
+                    .append(line.getProductoId())
+                    .append('x')
+                    .append(line.getCantidad())
+                    .append('=')
+                    .append(line.getSubtotal()));
+        }
+        return payload.toString();
     }
 
     private void exigirAccesoSede(UsuarioPrincipal principal, Long sedeId) {

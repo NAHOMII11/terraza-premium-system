@@ -9,14 +9,37 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import InvoiceView, { type Invoice } from '../../components/InvoiceView';
 import ReportsPanel from '../../components/ReportsPanel';
 
+interface OrderLine {
+  productoNombre?: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
 interface Order {
   id: number;
   mesaId: number;
   estado: string;
   total: number;
+  detalles?: OrderLine[];
 }
 
 type Tab = 'orders' | 'reports' | 'types';
+
+const COP_DENOMS = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50];
+
+function greedyChangePieces(amount: number) {
+  let left = Math.max(0, Math.round(amount));
+  const pieces: { coin: number; count: number }[] = [];
+  for (const coin of COP_DENOMS) {
+    const count = Math.floor(left / coin);
+    if (count > 0) {
+      pieces.push({ coin, count });
+      left -= count * coin;
+    }
+  }
+  return pieces;
+}
 
 interface ProductType {
   id: number;
@@ -67,6 +90,7 @@ export default function Dashboard() {
   const [amount, setAmount] = useState('');
   const [change, setChange] = useState('');
   const [payLeft, setPayLeft] = useState(90);
+  const [payLines, setPayLines] = useState<OrderLine[]>([]);
 
   const sedeId = localStorage.getItem('sedeId') || '1';
   const cashierId = localStorage.getItem('usuarioId') || '3';
@@ -102,6 +126,7 @@ export default function Dashboard() {
         clearInterval(tick);
         setPayModal(false);
         setSelectedOrder(null);
+        setPayLines([]);
         setMessage('Payment timed out. The order remains open.');
       } else {
         setPayLeft(left);
@@ -110,14 +135,22 @@ export default function Dashboard() {
     return () => clearInterval(tick);
   }, [payModal]);
 
-  const openPayment = (order: Order) => {
+  const openPayment = async (order: Order) => {
     setSelectedOrder(order);
+    setPayLines(order.detalles || []);
     setPaymentMethod('EFECTIVO');
     setAmount(String(order.total));
     setChange('0');
     setPayModal(true);
     setError('');
     setMessage('');
+    try {
+      const { data } = await api.get(`/api/orders/${order.id}`);
+      setSelectedOrder({ ...order, ...data });
+      setPayLines(Array.isArray(data?.detalles) ? data.detalles : order.detalles || []);
+    } catch {
+      setPayLines(order.detalles || []);
+    }
   };
 
   const isCard = paymentMethod === 'TARJETA_CREDITO' || paymentMethod === 'TARJETA_DEBITO';
@@ -180,6 +213,7 @@ export default function Dashboard() {
       await api.post('/api/pagos', body);
       setMessage(`Payment registered. Order #${selectedOrder.id} closed. Table is now available.`);
       setPayModal(false);
+      setPayLines([]);
       try {
         const { data } = await api.get(`/api/invoices/${selectedOrder.id}`);
         setInvoice(data);
@@ -415,7 +449,7 @@ export default function Dashboard() {
 
       {payModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-4">
               <h3 className="font-display text-2xl" style={{ color: 'var(--bar-dark)' }}>
                 Register payment
@@ -428,6 +462,29 @@ export default function Dashboard() {
             <div className="mb-4 p-4 rounded-lg" style={{ background: 'var(--bar-cream)' }}>
               <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">Order</p>
               <p className="font-medium">#{selectedOrder.id} · Table {selectedOrder.mesaId}</p>
+              <p className="text-xs uppercase tracking-widest text-gray-500 mt-3 mb-2">Products to pay</p>
+              {payLines.length === 0 ? (
+                <p className="text-sm text-gray-500">No products on this order.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="text-left pb-1 text-xs uppercase tracking-widest text-gray-500">Product</th>
+                      <th className="text-right pb-1 text-xs uppercase tracking-widest text-gray-500">Qty</th>
+                      <th className="text-right pb-1 text-xs uppercase tracking-widest text-gray-500">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payLines.map((line, index) => (
+                      <tr key={`${line.productoNombre || 'item'}-${index}`}>
+                        <td className="py-1 pr-2">{line.productoNombre || 'Product'}</td>
+                        <td className="py-1 text-right">{line.cantidad}</td>
+                        <td className="py-1 text-right">{formatMoney(line.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
               <p className="text-xs uppercase tracking-widest text-gray-500 mt-3 mb-1">Total</p>
               <p className="font-display text-3xl" style={{ color: 'var(--bar-amber)' }}>
                 {formatMoney(selectedOrder.total)}
@@ -494,12 +551,22 @@ export default function Dashboard() {
                 <p className="text-base mt-1" style={{ color: '#f7f2e9' }}>
                   {Math.round(Number(change) || 0).toLocaleString('en-US')}
                 </p>
+                {greedyChangePieces(Number(change) || 0).length > 0 && (
+                  <p className="text-xs mt-2" style={{ color: '#a7afbc' }}>
+                    {greedyChangePieces(Number(change) || 0)
+                      .map((piece) => `${piece.count} × ${piece.coin.toLocaleString('en-US')}`)
+                      .join(' · ')}
+                  </p>
+                )}
               </div>
             )}
 
             <div className="flex gap-2 mt-6">
               <button
-                onClick={() => setPayModal(false)}
+                onClick={() => {
+                  setPayModal(false);
+                  setPayLines([]);
+                }}
                 className="flex-1 py-3 rounded-lg border font-medium text-sm text-gray-600 hover:bg-gray-50"
                 style={{ borderColor: 'rgba(0,0,0,0.15)' }}
               >

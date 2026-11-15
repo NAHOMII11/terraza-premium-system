@@ -49,6 +49,6 @@ public class ProductoController {
     @PreAuthorize("hasRole('ADMIN')")
     public MessageResponse desactivar(@PathVariable Long id) {
         productoService.desactivar(id);
-        return new MessageResponse("Product deactivated successfully");
+        return new MessageResponse("Product deleted");
     }
 }

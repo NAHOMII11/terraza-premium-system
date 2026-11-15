@@ -4,7 +4,7 @@ import PageShell from '../components/PageShell';
 import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { InventarioItem, Producto } from '../types';
-import { currentBranch } from '../lib/format';
+import { currentBranch, formatMoney } from '../lib/format';
 
 function apiMessage(err: unknown, fallback: string) {
   const e = err as { response?: { data?: { message?: string; error?: string } } };
@@ -31,6 +31,14 @@ export default function Inventario() {
   const [addProductoId, setAddProductoId] = useState('');
   const [addStock, setAddStock] = useState('50');
   const [adding, setAdding] = useState(false);
+  const [budget, setBudget] = useState('100000');
+  const [plan, setPlan] = useState<{
+    budget: number;
+    totalCost: number;
+    totalMargin: number;
+    items: { productoId: number; nombre: string; cost: number; margin: number }[];
+  } | null>(null);
+  const [planning, setPlanning] = useState(false);
   const sedeId = localStorage.getItem('sedeId') || '1';
 
   const load = () => {
@@ -57,6 +65,24 @@ export default function Inventario() {
   const filtered = items.filter((i) =>
     (i.productoNombre || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const suggestRestock = async () => {
+    const value = Number(budget);
+    if (!Number.isInteger(value) || value < 1) {
+      setError('Budget must be a whole number greater than 0');
+      return;
+    }
+    setPlanning(true);
+    setError('');
+    try {
+      const { data } = await api.get(`/api/inventory/restock-plan?sedeId=${sedeId}&budget=${value}`);
+      setPlan(data);
+    } catch (err) {
+      setError(apiMessage(err, 'Could not build restock plan'));
+    } finally {
+      setPlanning(false);
+    }
+  };
 
   const enInventario = new Set(items.map((i) => i.productoId));
   const disponibles = productos.filter((p) => !enInventario.has(p.id));
@@ -159,7 +185,7 @@ export default function Inventario() {
           </div>
           </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap gap-3 items-end">
           <input
             type="text"
             placeholder="Search product..."
@@ -168,7 +194,44 @@ export default function Inventario() {
             className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
             style={{ borderColor: 'rgba(0,0,0,0.1)' }}
           />
+          <label className="text-sm">
+            <span className="block text-xs uppercase tracking-widest text-gray-500">Restock budget (COP)</span>
+            <input
+              type="number"
+              min={1}
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              className="mt-1 w-40 px-3 py-2 rounded-lg border bg-white text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={suggestRestock}
+            disabled={planning}
+            className="px-4 py-2 rounded-lg text-sm font-medium"
+            style={{ background: '#10243d', color: '#f7f2e9', border: '1px solid rgba(146, 98, 8,0.35)' }}
+          >
+            {planning ? 'Planning...' : 'Suggest restock'}
+          </button>
         </div>
+        {plan && (
+          <div className="mb-6 p-4 rounded-xl" style={{ background: '#10243d', border: '1px solid rgba(146, 98, 8,0.28)' }}>
+            <p className="text-sm mb-2" style={{ color: '#f7f2e9' }}>
+              Knapsack plan · cost {formatMoney(plan.totalCost)} · margin {formatMoney(plan.totalMargin)} of {formatMoney(plan.budget)}
+            </p>
+            {plan.items.length === 0 ? (
+              <p className="text-sm text-gray-400">No product fits this budget.</p>
+            ) : (
+              <ul className="text-sm space-y-1" style={{ color: '#a7afbc' }}>
+                {plan.items.map((row) => (
+                  <li key={row.productoId}>
+                    {row.nombre} · cost {formatMoney(row.cost)} · margin {formatMoney(row.margin)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {message && (
           <div

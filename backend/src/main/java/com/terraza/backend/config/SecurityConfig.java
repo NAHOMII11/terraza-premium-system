@@ -47,17 +47,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/users", "/api/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/branches").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/branches/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/branches/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/branches", "/api/branches/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/products").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole("ADMIN", "CAJERO", "MESERO")
+                        .requestMatchers(HttpMethod.GET, "/api/orders", "/api/orders/*").hasAnyRole("ADMIN", "CAJERO", "MESERO")
                         .requestMatchers(HttpMethod.POST, "/api/orders").hasAnyRole("ADMIN", "MESERO")
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*").hasAnyRole("ADMIN", "MESERO")
                         .requestMatchers(HttpMethod.GET, "/api/tables").hasAnyRole("ADMIN", "CAJERO", "MESERO")
                         .requestMatchers(HttpMethod.PUT, "/api/tables/*").hasAnyRole("ADMIN", "MESERO")
-                        .requestMatchers(HttpMethod.GET, "/api/inventory").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers(HttpMethod.GET, "/api/inventory", "/api/inventory/**").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.POST, "/api/inventory").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.PUT, "/api/inventory/*").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.GET, "/api/suppliers").hasAnyRole("ADMIN", "CAJERO")
@@ -71,6 +72,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/payments").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.GET, "/api/invoices", "/api/invoices/*").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers(HttpMethod.GET, "/api/reports", "/api/reports/**").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers(HttpMethod.GET, "/api/qa", "/api/qa/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
@@ -107,7 +109,7 @@ public class SecurityConfig {
 
     private void verificarEstado(UserDetails user) {
         if (!user.isEnabled()) {
-            throw new DisabledException("Inactive user");
+            throw new DisabledException("This account is deactivated.");
         }
         if (!user.isAccountNonLocked()) {
             throw new LockedException("Account temporarily locked");

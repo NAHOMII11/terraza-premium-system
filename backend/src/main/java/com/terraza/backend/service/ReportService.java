@@ -1,5 +1,6 @@
 package com.terraza.backend.service;
 
+import com.terraza.backend.algorithm.MergeSortAlgorithm;
 import com.terraza.backend.dto.InventorySoldRow;
 import com.terraza.backend.dto.SalesReportRow;
 import com.terraza.backend.exception.BusinessException;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -21,7 +23,10 @@ public class ReportService {
     private final ReportRepository reportRepository;
 
     public List<SalesReportRow> ventas(Long sedeId, LocalDate from, LocalDate to, UsuarioPrincipal principal) {
-        return reportRepository.ventas(sedePermitida(sedeId, principal), from, to);
+        List<SalesReportRow> rows = reportRepository.ventas(sedePermitida(sedeId, principal), from, to);
+        return MergeSortAlgorithm.sort(rows, Comparator.comparing(
+                SalesReportRow::getFecha,
+                Comparator.nullsLast(Comparator.naturalOrder())).reversed());
     }
 
     public List<InventorySoldRow> inventarioVendido(Long sedeId, LocalDate from, LocalDate to, UsuarioPrincipal principal) {

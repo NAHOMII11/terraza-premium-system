@@ -1,5 +1,7 @@
 package com.terraza.backend.service;
 
+import com.terraza.backend.algorithm.BinarySearchAlgorithm;
+import com.terraza.backend.algorithm.OrderTotalAlgorithm;
 import com.terraza.backend.dto.DetallePedidoRequest;
 import com.terraza.backend.dto.PedidoRequest;
 import com.terraza.backend.exception.BusinessException;
@@ -81,6 +83,12 @@ public class PedidoService {
         return pedidoRepository.findAbiertosBySede(sedeId);
     }
 
+    public Pedido obtener(Long id, UsuarioPrincipal principal) {
+        Pedido pedido = obtener(id);
+        validarAccesoSede(principal, pedido.getSedeId());
+        return pedido;
+    }
+
     private Pedido obtener(Long id) {
         return pedidoRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -125,9 +133,10 @@ public class PedidoService {
             });
         }
 
+        List<Producto> catalogo = BinarySearchAlgorithm.sortBy(productoRepository.findActivos(), Producto::getId);
         List<DetallePedido> detalles = new ArrayList<>();
         for (Map.Entry<Long, Integer> entry : cantidades.entrySet()) {
-            Producto producto = productoRepository.findActivoById(entry.getKey())
+            Producto producto = BinarySearchAlgorithm.find(catalogo, entry.getKey(), Producto::getId)
                     .orElseThrow(() -> new BusinessException(
                             HttpStatus.BAD_REQUEST,
                             "Product " + entry.getKey() + " does not exist or is inactive"));
@@ -208,9 +217,6 @@ public class PedidoService {
     }
 
     private BigDecimal total(List<DetallePedido> detalles) {
-        return detalles.stream()
-                .map(DetallePedido::getSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+        return OrderTotalAlgorithm.total(detalles, DetallePedido::getSubtotal);
     }
 }

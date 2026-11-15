@@ -67,7 +67,14 @@ export default function Login() {
         return;
       }
     } catch (err: any) {
-      setError(err.response ? 'Invalid credentials' : 'Could not reach the server');
+      const apiMsg = String(err.response?.data?.message || '');
+      if (/inactive|deactivat/i.test(apiMsg)) {
+        setError('This account is deactivated.');
+      } else if (/too many login/i.test(apiMsg)) {
+        setError(apiMsg);
+      } else {
+        setError(err.response ? 'Invalid credentials' : 'Could not reach the server');
+      }
     } finally {
       setLoading(false);
     }

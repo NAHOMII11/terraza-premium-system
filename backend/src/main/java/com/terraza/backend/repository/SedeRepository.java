@@ -74,6 +74,35 @@ public class SedeRepository {
                 """, nombre, direccion, telefono, ciudad, id);
     }
 
+    public int contarActivas() {
+        Integer total = jdbc.queryForObject("SELECT COUNT(*) FROM sedes WHERE active = TRUE", Integer.class);
+        return total == null ? 0 : total;
+    }
+
+    public int contarUsuarios(Long id) {
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM usuarios WHERE sede_id = ? AND active = TRUE",
+                Integer.class,
+                id);
+        return total == null ? 0 : total;
+    }
+
+    public int contarPedidosAbiertos(Long id) {
+        Integer total = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM pedidos WHERE sede_id = ? AND estado = 'ABIERTO'",
+                Integer.class,
+                id);
+        return total == null ? 0 : total;
+    }
+
+    public int desactivar(Long id) {
+        return jdbc.update("""
+                UPDATE sedes
+                SET active = FALSE, updated_at = NOW()
+                WHERE id = ? AND active = TRUE
+                """, id);
+    }
+
     private Sede map(ResultSet rs) throws SQLException {
         Sede sede = new Sede();
         sede.setId(rs.getLong("id"));
