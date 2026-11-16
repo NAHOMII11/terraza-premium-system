@@ -23,3 +23,7 @@ export function branchLabel(name?: string | null) {
 export function currentBranch() {
   return branchLabel(localStorage.getItem('sedeNombre')) || `Branch ${localStorage.getItem('sedeId') || '1'}`;
 }
+
+export function isAdminAllBranches() {
+  return localStorage.getItem('rol') === 'ADMIN' && localStorage.getItem('adminBranchScope') !== 'sede';
+}

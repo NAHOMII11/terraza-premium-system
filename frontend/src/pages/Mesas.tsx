@@ -6,11 +6,21 @@ import PageShell from '../components/PageShell';
 import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { Mesa } from '../types';
-import { currentBranch } from '../lib/format';
+import { branchLabel, currentBranch, isAdminAllBranches } from '../lib/format';
+
+interface Branch {
+  id: number;
+  nombre: string;
+}
+
+interface MesaConSede extends Mesa {
+  sedeNombre?: string;
+}
 
 export default function Mesas() {
   useInactivityLogout();
-  const [mesas, setMesas] = useState<Mesa[]>([]);
+  const [mesas, setMesas] = useState<MesaConSede[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -24,6 +34,7 @@ export default function Mesas() {
   const navigate = useNavigate();
   const location = useLocation();
   const sedeId = localStorage.getItem('sedeId') || '1';
+  const allBranches = isAdminAllBranches();
 
   useEffect(() => {
     const fromOrder = (location.state as { message?: string } | null)?.message;
@@ -33,15 +44,31 @@ export default function Mesas() {
   const loadTables = () => {
     setLoading(true);
     api
-      .get(`/api/tables?sedeId=${sedeId}`)
-      .then((r) => setMesas(r.data))
+      .get('/api/branches')
+      .then((r) => {
+        const list = (Array.isArray(r.data) ? r.data : []).filter(
+          (b: Branch) => !/cantina/i.test(b.nombre || '')
+        ) as Branch[];
+        setBranches(list);
+        const targets = allBranches ? list : list.filter((b) => String(b.id) === sedeId);
+        const useTargets = targets.length > 0 ? targets : [{ id: Number(sedeId), nombre: currentBranch() }];
+        return Promise.all(
+          useTargets.map((b) =>
+            api.get(`/api/tables?sedeId=${b.id}`).then((tr) => {
+              const rows: Mesa[] = Array.isArray(tr.data) ? tr.data : [];
+              return rows.map((m) => ({ ...m, sedeId: m.sedeId || b.id, sedeNombre: b.nombre }));
+            }).catch(() => [] as MesaConSede[])
+          )
+        );
+      })
+      .then((groups) => setMesas(groups.flat()))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadTables();
-  }, [sedeId]);
+  }, [sedeId, allBranches]);
 
   const isAvailable = (estado: string) =>
     estado === 'DISPONIBLE' || estado === 'LIBRE';
@@ -69,6 +96,14 @@ export default function Mesas() {
   const available = mesas.filter((m) => isAvailable(m.estado)).length;
   const occupied = mesas.filter((m) => isOccupied(m.estado)).length;
 
+  const openTable = (mesa: MesaConSede, visibleNumber: number) => {
+    if (mesa.sedeId) {
+      localStorage.setItem('sedeId', String(mesa.sedeId));
+      if (mesa.sedeNombre) localStorage.setItem('sedeNombre', mesa.sedeNombre);
+    }
+    navigate(`/mesera/pedido/${mesa.id}?numero=${visibleNumber}`);
+  };
+
   const releaseTable = async () => {
     if (!releaseTarget) return;
     try {
@@ -87,12 +122,83 @@ export default function Mesas() {
     }
   };
 
+  const groups = allBranches
+    ? (branches.length ? branches : []).map((b) => ({
+        id: b.id,
+        nombre: branchLabel(b.nombre),
+        mesas: mesas.filter((m) => Number(m.sedeId) === Number(b.id)),
+      }))
+    : [
+        {
+          id: Number(sedeId),
+          nombre: currentBranch(),
+          mesas,
+        },
+      ];
+
+  const renderCard = (mesa: MesaConSede, index: number) => {
+    const cfg = statusConfig(mesa.estado);
+    const occ = isOccupied(mesa.estado);
+    const visibleNumber = mesa.numero || index + 1;
+    return (
+      <div
+        key={mesa.id}
+        className="group relative rounded-xl border-2 transition-all hover:shadow-lg hover:-translate-y-1 overflow-hidden"
+        style={{ background: cfg.bg, borderColor: cfg.border }}
+      >
+        <button onClick={() => openTable(mesa, visibleNumber)} className="w-full p-6 text-left">
+          <div className="flex items-center justify-between mb-3">
+            <span
+              className="text-xs uppercase tracking-widest font-medium"
+              style={{ color: cfg.text, letterSpacing: '0.1em' }}
+            >
+              Table
+            </span>
+            <span className="w-2 h-2 rounded-full" style={{ background: cfg.dot }} />
+          </div>
+          <p className="font-display text-4xl mb-1" style={{ color: cfg.text }}>
+            {String(visibleNumber).padStart(2, '0')}
+          </p>
+          <p className="text-xs font-medium" style={{ color: cfg.text }}>
+            {cfg.label}
+          </p>
+        </button>
+
+        {occ ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setReleaseTarget({ id: mesa.id, numero: visibleNumber });
+            }}
+            className="w-full py-2 text-[10px] uppercase tracking-widest font-semibold border-t transition-colors hover:bg-red-100"
+            style={{
+              background: 'rgba(183,28,28,0.08)',
+              borderColor: cfg.border,
+              color: cfg.text,
+              letterSpacing: '0.15em',
+            }}
+          >
+            Release table
+          </button>
+        ) : (
+          <div
+            className="px-6 py-3 border-t flex items-center justify-between text-[10px] uppercase tracking-widest opacity-60"
+            style={{ borderColor: cfg.border, color: cfg.text }}
+          >
+            <span>Take order</span>
+            <span>→</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <PageShell>
     <AppLayout
       eyebrow="Welcome to Terraza Premium"
       title="Table status"
-      subtitle={`Branch · ${currentBranch()}`}
+      subtitle={allBranches ? 'All branches' : `Branch · ${currentBranch()}`}
     >
           <div className="flex flex-wrap justify-end gap-6 mb-8">
           <div className="flex gap-6">
@@ -141,75 +247,30 @@ export default function Mesas() {
             <p className="text-gray-400">No tables registered at this branch.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {mesas.map((mesa, index) => {
-              const cfg = statusConfig(mesa.estado);
-              const occ = isOccupied(mesa.estado);
-              const visibleNumber = mesa.numero || index + 1;
+          <div className="space-y-8">
+            {groups.map((group) => {
+              const free = group.mesas.filter((m) => isAvailable(m.estado)).length;
+              const busy = group.mesas.filter((m) => isOccupied(m.estado)).length;
               return (
-                <div
-                  key={mesa.id}
-                  className="group relative rounded-xl border-2 transition-all hover:shadow-lg hover:-translate-y-1 overflow-hidden"
-                  style={{ background: cfg.bg, borderColor: cfg.border }}
-                >
-                  <button
-                    onClick={() =>
-                      navigate(`/mesera/pedido/${mesa.id}?numero=${visibleNumber}`)
-                    }
-                    className="w-full p-6 text-left"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span
-                        className="text-xs uppercase tracking-widest font-medium"
-                        style={{ color: cfg.text, letterSpacing: '0.1em' }}
-                      >
-                        Table
-                      </span>
-                      <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ background: cfg.dot }}
-                      />
-                    </div>
-                    <p
-                      className="font-display text-4xl mb-1"
-                      style={{ color: cfg.text }}
-                    >
-                      {String(visibleNumber).padStart(2, '0')}
-                    </p>
-                    <p
-                      className="text-xs font-medium"
-                      style={{ color: cfg.text }}
-                    >
-                      {cfg.label}
-                    </p>
-                  </button>
-
-                  {occ ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setReleaseTarget({ id: mesa.id, numero: visibleNumber });
-                      }}
-                      className="w-full py-2 text-[10px] uppercase tracking-widest font-semibold border-t transition-colors hover:bg-red-100"
-                      style={{
-                        background: 'rgba(183,28,28,0.08)',
-                        borderColor: cfg.border,
-                        color: cfg.text,
-                        letterSpacing: '0.15em',
-                      }}
-                    >
-                      Release table
-                    </button>
-                  ) : (
-                    <div
-                      className="px-6 py-3 border-t flex items-center justify-between text-[10px] uppercase tracking-widest opacity-60"
-                      style={{ borderColor: cfg.border, color: cfg.text }}
-                    >
-                      <span>Take order</span>
-                      <span>→</span>
+                <section key={group.id}>
+                  {allBranches && (
+                    <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                      <h3 className="font-display text-2xl" style={{ color: '#f7f2e9' }}>
+                        {group.nombre}
+                      </h3>
+                      <p className="text-xs uppercase tracking-widest" style={{ color: '#c9a227' }}>
+                        {busy} occupied · {free} free · {group.mesas.length} total
+                      </p>
                     </div>
                   )}
-                </div>
+                  {group.mesas.length === 0 ? (
+                    <p className="text-sm text-gray-400">No tables at this branch.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {group.mesas.map((mesa, index) => renderCard(mesa, index))}
+                    </div>
+                  )}
+                </section>
               );
             })}
           </div>

@@ -4,11 +4,13 @@ import api from '../api/api';
 import PageShell from '../components/PageShell';
 import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
-import { currentBranch, formatMoney } from '../lib/format';
+import { branchLabel, currentBranch, formatMoney, isAdminAllBranches } from '../lib/format';
 
 interface Pedido {
   id: number;
   mesaId: number;
+  sedeId?: number;
+  sedeNombre?: string;
   estado: string;
   total: number;
 }
@@ -27,19 +29,35 @@ export default function PedidosActivos() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const sedeId = localStorage.getItem('sedeId') || '1';
+  const allBranches = isAdminAllBranches();
 
   useEffect(() => {
-    Promise.all([
-      api.get(`/api/orders?sedeId=${sedeId}`),
-      api.get(`/api/tables?sedeId=${sedeId}`),
-    ])
-      .then(([rPedidos, rMesas]) => {
-        setPedidos(rPedidos.data);
-        setMesas(rMesas.data);
+    api
+      .get('/api/branches')
+      .then((r) => {
+        const list = (Array.isArray(r.data) ? r.data : []).filter(
+          (b: { id: number; nombre: string }) => !/cantina/i.test(b.nombre || '')
+        ) as { id: number; nombre: string }[];
+        const targets = allBranches && list.length > 0 ? list : [{ id: Number(sedeId), nombre: '' }];
+        return Promise.all(
+          targets.map((b) =>
+            Promise.all([
+              api.get(`/api/orders?sedeId=${b.id}`).then((o) => {
+                const rows: Pedido[] = Array.isArray(o.data) ? o.data : [];
+                return rows.map((p) => ({ ...p, sedeId: p.sedeId || b.id, sedeNombre: b.nombre }));
+              }).catch(() => [] as Pedido[]),
+              api.get(`/api/tables?sedeId=${b.id}`).then((t) => (Array.isArray(t.data) ? t.data : [])).catch(() => [] as Mesa[]),
+            ])
+          )
+        );
+      })
+      .then((groups) => {
+        setPedidos(groups.flatMap((g) => g[0]));
+        setMesas(groups.flatMap((g) => g[1]));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [sedeId]);
+  }, [sedeId, allBranches]);
 
   // Convierte el id de la mesa a su numero visible
   const numeroMesa = (mesaId: number) => {
@@ -62,7 +80,7 @@ export default function PedidosActivos() {
     <AppLayout
       eyebrow="Welcome to Terraza Premium"
       title="Active orders"
-      subtitle={`Branch · ${currentBranch()}`}
+      subtitle={allBranches ? 'All branches' : `Branch · ${currentBranch()}`}
     >
           <div className="mb-8 flex justify-end">
           <button
@@ -118,6 +136,14 @@ export default function PedidosActivos() {
                   </div>
 
                   <div className="space-y-1">
+                    {allBranches && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Branch</span>
+                      <span className="font-medium" style={{ color: '#f7f2e9' }}>
+                        {branchLabel(p.sedeNombre) || '—'}
+                      </span>
+                    </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Table</span>
                       <span className="font-medium text-gray-800">

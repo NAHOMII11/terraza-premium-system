@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/api';
 import PageShell from '../../components/PageShell';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
-import { formatDateTime, formatMoney, paymentMethodLabel } from '../../lib/format';
+import { branchLabel, formatDateTime, formatMoney, isAdminAllBranches, paymentMethodLabel } from '../../lib/format';
 import { downloadCsv, downloadExcel } from '../../lib/export';
 import AppLayout from '../../components/AppLayout';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -19,6 +19,8 @@ interface OrderLine {
 interface Order {
   id: number;
   mesaId: number;
+  sedeId?: number;
+  sedeNombre?: string;
   estado: string;
   total: number;
   detalles?: OrderLine[];
@@ -64,7 +66,7 @@ export default function Dashboard() {
   const [invoiceRange, setInvoiceRange] = useState<{ from: string; to: string; scope: 'branch' | 'all' }>({
     from: '',
     to: '',
-    scope: 'branch',
+    scope: isAdminAllBranches() ? 'all' : 'branch',
   });
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [types, setTypes] = useState<ProductType[]>([]);
@@ -99,17 +101,40 @@ export default function Dashboard() {
 
   const sedeId = localStorage.getItem('sedeId') || '1';
   const cashierId = localStorage.getItem('usuarioId') || '3';
+  const allBranches = isAdminAllBranches();
 
   const loadData = () => {
     setLoading(true);
+    const invoiceQs = new URLSearchParams();
+    if (!allBranches || invoiceRange.scope === 'branch') invoiceQs.set('sedeId', sedeId);
+    if (invoiceRange.from) invoiceQs.set('from', invoiceRange.from);
+    if (invoiceRange.to) invoiceQs.set('to', invoiceRange.to);
+    const invQuery = invoiceQs.toString();
+
+    const branchesReq = allBranches
+      ? api.get('/api/branches').catch(() => ({ data: [] }))
+      : Promise.resolve({ data: [] });
+
     Promise.all([
-      api.get(`/api/orders?sedeId=${sedeId}`).catch(() => ({ data: [] })),
+      branchesReq,
       api.get(`/api/inventory?sedeId=${sedeId}`).catch(() => ({ data: [] })),
-      api.get(`/api/invoices?sedeId=${sedeId}${invoiceRange.from ? `&from=${invoiceRange.from}` : ''}${invoiceRange.to ? `&to=${invoiceRange.to}` : ''}`).catch(() => ({ data: [] })),
+      api.get(`/api/invoices${invQuery ? `?${invQuery}` : ''}`).catch(() => ({ data: [] })),
       api.get('/api/product-types').catch(() => ({ data: [] })),
     ])
-      .then(([rO, rI, rInv, rT]) => {
-        setOrders(Array.isArray(rO.data) ? rO.data : []);
+      .then(async ([rB, rI, rInv, rT]) => {
+        const list = (Array.isArray(rB.data) ? rB.data : []).filter(
+          (b: { id: number; nombre: string }) => !/cantina/i.test(b.nombre || '')
+        ) as { id: number; nombre: string }[];
+        const targets = allBranches && list.length > 0 ? list : [{ id: Number(sedeId), nombre: '' }];
+        const orderGroups = await Promise.all(
+          targets.map((b) =>
+            api.get(`/api/orders?sedeId=${b.id}`).then((r) => {
+              const rows: Order[] = Array.isArray(r.data) ? r.data : [];
+              return rows.map((o) => ({ ...o, sedeId: o.sedeId || b.id, sedeNombre: b.nombre }));
+            }).catch(() => [] as Order[])
+          )
+        );
+        setOrders(orderGroups.flat());
         setInventory(Array.isArray(rI.data) ? rI.data : []);
         setInvoices(Array.isArray(rInv.data) ? rInv.data : []);
         setTypes(Array.isArray(rT.data) ? rT.data : []);
@@ -119,7 +144,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
-  }, [sedeId, invoiceRange.from, invoiceRange.to]);
+  }, [sedeId, invoiceRange.from, invoiceRange.to, invoiceRange.scope, allBranches]);
 
   useEffect(() => {
     if (!payModal) return;
@@ -292,6 +317,7 @@ export default function Dashboard() {
     <AppLayout
       eyebrow="Welcome to Terraza Premium"
       title="Cashier"
+      subtitle={allBranches ? 'All branches' : undefined}
     >
 
         {message && (
@@ -336,6 +362,9 @@ export default function Dashboard() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Order</th>
+                      {allBranches && (
+                      <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Branch</th>
+                      )}
                       <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Table</th>
                       <th className="text-left px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Status</th>
                       <th className="text-right px-6 py-3 text-xs uppercase tracking-widest text-gray-500">Total</th>
@@ -348,6 +377,9 @@ export default function Dashboard() {
                       return (
                         <tr key={o.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                           <td className="px-6 py-4 font-medium">#{o.id}</td>
+                          {allBranches && (
+                          <td className="px-6 py-4 text-sm">{branchLabel(o.sedeNombre) || '—'}</td>
+                          )}
                           <td className="px-6 py-4 text-sm">Table {o.mesaId}</td>
                           <td className="px-6 py-4">
                             <span className="px-2.5 py-1 rounded-full text-xs font-medium"
@@ -406,7 +438,7 @@ export default function Dashboard() {
 
             {tab === 'reports' && (
               <div className="p-6 space-y-8">
-                <ReportsPanel sedeId={sedeId} allowAllBranches={false} onApply={setInvoiceRange} />
+                <ReportsPanel sedeId={sedeId} allowAllBranches={allBranches} onApply={setInvoiceRange} />
                 <div>
                   <h3 className="font-display text-xl mb-1" style={{ color: '#f7f2e9' }}>
                     Sales pending collection
@@ -433,6 +465,9 @@ export default function Dashboard() {
                         <tr>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Invoice</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Closed at</th>
+                          {allBranches && (
+                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Branch</th>
+                          )}
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Table</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Waiter</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Cashier</th>
@@ -445,6 +480,9 @@ export default function Dashboard() {
                           <tr key={row.pedidoId} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                             <td className="px-4 py-2">#{row.pedidoId}</td>
                             <td className="px-4 py-2">{formatDateTime(row.fechaCierre)}</td>
+                            {allBranches && (
+                            <td className="px-4 py-2">{branchLabel(row.sedeNombre) || '—'}</td>
+                            )}
                             <td className="px-4 py-2">Table {row.mesaNumero ?? '—'}</td>
                             <td className="px-4 py-2">{row.meseroNombre || '—'}</td>
                             <td className="px-4 py-2">{row.cajeroNombre || row.pago?.cajeroNombre || '—'}</td>
