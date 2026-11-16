@@ -3,7 +3,6 @@ package com.terraza.backend.service;
 import com.terraza.backend.dto.ProductoRequest;
 import com.terraza.backend.exception.BusinessException;
 import com.terraza.backend.model.Producto;
-import com.terraza.backend.model.Sede;
 import com.terraza.backend.repository.InventoryRepository;
 import com.terraza.backend.repository.ProductoRepository;
 import com.terraza.backend.repository.SedeRepository;
@@ -49,10 +48,12 @@ public class ProductoService {
                 request.getTipoProductoId(),
                 request.getProveedorId());
         auditoriaService.registrar("CREAR_PRODUCTO", "Producto creado: " + codigo);
-        for (Sede sede : sedeRepository.findAll()) {
-            if (!inventoryRepository.existePorSedeYProducto(sede.getId(), id)) {
-                inventoryRepository.insertar(sede.getId(), id, 0);
-            }
+        Long sedeId = request.getSedeId();
+        if (sedeId == null || !sedeRepository.existeActiva(sedeId)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Select the branch for this product");
+        }
+        if (!inventoryRepository.existePorSedeYProducto(sedeId, id)) {
+            inventoryRepository.insertar(sedeId, id, 0);
         }
         return obtener(id);
     }

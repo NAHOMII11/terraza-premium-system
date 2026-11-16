@@ -18,19 +18,26 @@ export default function Productos() {
   const [loading, setLoading] = useState(true);
   const [typeId, setTypeId] = useState<number | 'all'>('all');
   const [search, setSearch] = useState('');
+  const sedeId = localStorage.getItem('sedeId') || '1';
 
   useEffect(() => {
     Promise.all([
       api.get('/api/products'),
       api.get('/api/product-types').catch(() => ({ data: [] })),
+      api.get(`/api/inventory?sedeId=${sedeId}`).catch(() => ({ data: [] })),
     ])
-      .then(([rP, rT]) => {
-        setProductos(Array.isArray(rP.data) ? rP.data : []);
+      .then(([rP, rT, rI]) => {
+        const catalog = Array.isArray(rP.data) ? rP.data : [];
+        const stock = Array.isArray(rI.data) ? rI.data : [];
+        const atBranch = new Set(
+          stock.map((row: { productoId?: number }) => Number(row.productoId)).filter(Boolean)
+        );
+        setProductos(catalog.filter((p: Producto) => atBranch.has(Number(p.id))));
         setTypes(Array.isArray(rT.data) ? rT.data : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [sedeId]);
 
   const filtered = productos.filter((p) => {
     const matchType = typeId === 'all' || Number(p.tipoProductoId) === typeId;

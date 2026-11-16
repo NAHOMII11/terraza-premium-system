@@ -41,9 +41,18 @@ export default function TomarPedido() {
   const sedeId = Number(localStorage.getItem('sedeId') || 1);
 
   useEffect(() => {
-    api
-      .get('/api/products')
-      .then((r) => setProductos(r.data))
+    Promise.all([
+      api.get('/api/products').catch(() => ({ data: [] })),
+      api.get(`/api/inventory?sedeId=${sedeId}`).catch(() => ({ data: [] })),
+    ])
+      .then(([rP, rI]) => {
+        const catalog = Array.isArray(rP.data) ? rP.data : [];
+        const stock = Array.isArray(rI.data) ? rI.data : [];
+        const atBranch = new Set(
+          stock.map((row: { productoId?: number }) => Number(row.productoId)).filter(Boolean)
+        );
+        setProductos(catalog.filter((p: Producto) => atBranch.has(Number(p.id))));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
 

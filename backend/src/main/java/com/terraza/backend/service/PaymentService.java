@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -53,9 +54,13 @@ public class PaymentService {
         return new PaymentDTO("Payment registered", cambio, desglose);
     }
 
-    public java.util.List<InvoiceDTO> listarFacturas(Long sedeId, UsuarioPrincipal principal) {
-        exigirAccesoSede(principal, sedeId);
-        return paymentRepository.listarFacturas(sedeId);
+    public java.util.List<InvoiceDTO> listarFacturas(Long sedeId, LocalDate from, LocalDate to, UsuarioPrincipal principal) {
+        Long sede = sedeId;
+        if (!"ADMIN".equals(principal.getUsuario().getRolNombre())) {
+            sede = principal.getUsuario().getSedeId();
+            exigirAccesoSede(principal, sede);
+        }
+        return paymentRepository.listarFacturas(sede, from, to);
     }
 
     @Transactional

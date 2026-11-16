@@ -53,7 +53,7 @@ public class ReportRepository {
     public List<InventorySoldRow> inventarioVendido(Long sedeId, LocalDate from, LocalDate to) {
         List<Object> args = new ArrayList<>();
         StringBuilder sql = new StringBuilder("""
-                SELECT p.fecha_apertura::date AS fecha, pr.codigo, pr.nombre,
+                SELECT COALESCE(p.fecha_cierre, p.fecha_apertura)::date AS fecha, pr.codigo, pr.nombre,
                        SUM(d.cantidad) AS cantidad_vendida,
                        pr.valor_compra,
                        CASE WHEN SUM(d.cantidad) = 0 THEN 0
@@ -64,22 +64,22 @@ public class ReportRepository {
                 JOIN pedidos p ON p.id = d.pedido_id
                 JOIN productos pr ON pr.id = d.producto_id
                 JOIN sedes s ON s.id = p.sede_id
-                WHERE 1 = 1
+                WHERE p.estado = 'CERRADO'
                 """);
         if (sedeId != null) {
             sql.append(" AND p.sede_id = ?");
             args.add(sedeId);
         }
         if (from != null) {
-            sql.append(" AND p.fecha_apertura::date >= ?");
+            sql.append(" AND COALESCE(p.fecha_cierre, p.fecha_apertura)::date >= ?");
             args.add(Date.valueOf(from));
         }
         if (to != null) {
-            sql.append(" AND p.fecha_apertura::date <= ?");
+            sql.append(" AND COALESCE(p.fecha_cierre, p.fecha_apertura)::date <= ?");
             args.add(Date.valueOf(to));
         }
         sql.append("""
-                 GROUP BY p.fecha_apertura::date, pr.codigo, pr.nombre, pr.valor_compra, s.nombre
+                 GROUP BY COALESCE(p.fecha_cierre, p.fecha_apertura)::date, pr.codigo, pr.nombre, pr.valor_compra, s.nombre
                  ORDER BY fecha DESC, s.nombre, pr.codigo
                 """);
         return jdbc.query(sql.toString(), (rs, n) -> mapSold(rs), args.toArray());

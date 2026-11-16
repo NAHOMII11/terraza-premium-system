@@ -52,9 +52,11 @@ function payLabel(method?: string) {
 export default function ReportsPanel({
   sedeId,
   allowAllBranches,
+  onApply,
 }: {
   sedeId: string;
   allowAllBranches: boolean;
+  onApply?: (range: { from: string; to: string; scope: 'branch' | 'all' }) => void;
 }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -70,13 +72,31 @@ export default function ReportsPanel({
     return qs({ sedeId: sede, from: appliedFrom, to: appliedTo });
   };
 
-  const applyFilter = () => {
-    setAppliedFrom(from);
-    setAppliedTo(to);
-    setAppliedScope(scope);
-    const sedeLabel = allowAllBranches && scope === 'all' ? 'all branches' : 'current branch';
-    const range = from || to ? `${from || '…'} → ${to || '…'}` : 'all dates';
+  const applyRange = (nextFrom: string, nextTo: string, nextScope: 'branch' | 'all') => {
+    let start = nextFrom;
+    let end = nextTo;
+    if (start && end && start > end) {
+      const swap = start;
+      start = end;
+      end = swap;
+      setFrom(start);
+      setTo(end);
+    }
+    setAppliedFrom(start);
+    setAppliedTo(end);
+    setAppliedScope(nextScope);
+    onApply?.({ from: start, to: end, scope: nextScope });
+    const sedeLabel = allowAllBranches && nextScope === 'all' ? 'all branches' : 'current branch';
+    const range = start || end ? `${start || '…'} → ${end || '…'}` : 'all dates';
     setNote(`Filter applied: ${range} · ${sedeLabel}`);
+  };
+
+  const applyFilter = () => applyRange(from, to, scope);
+
+  const showAll = () => {
+    setFrom('');
+    setTo('');
+    applyRange('', '', scope);
   };
 
   const exportSales = async (kind: 'csv' | 'excel') => {
@@ -168,6 +188,13 @@ export default function ReportsPanel({
           style={{ background: '#926208', color: '#071525' }}
         >
           Apply
+        </button>
+        <button
+          type="button"
+          onClick={showAll}
+          className="px-4 py-2 rounded-lg border text-sm"
+        >
+          Show all
         </button>
       </div>
 

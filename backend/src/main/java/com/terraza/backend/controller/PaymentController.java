@@ -7,7 +7,10 @@ import com.terraza.backend.exception.BusinessException;
 import com.terraza.backend.security.UsuarioPrincipal;
 import com.terraza.backend.service.PaymentService;
 import jakarta.validation.Valid;
+
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,9 +40,11 @@ public class PaymentController {
     @GetMapping("/api/invoices")
     @PreAuthorize("hasAnyRole('ADMIN', 'CAJERO')")
     public ResponseEntity<java.util.List<InvoiceDTO>> listarFacturas(
-            @RequestParam Long sedeId,
+            @RequestParam(required = false) Long sedeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             Authentication authentication) {
-        return ResponseEntity.ok(paymentService.listarFacturas(sedeId, principal(authentication)));
+        return ResponseEntity.ok(paymentService.listarFacturas(sedeId, from, to, principal(authentication)));
     }
 
     @GetMapping("/api/invoices/{orderId}")

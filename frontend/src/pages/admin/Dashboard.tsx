@@ -89,6 +89,7 @@ const emptyProduct = {
   valorVenta: '',
   tipoProductoId: '',
   proveedorId: '',
+  sedeId: '',
 };
 
 const emptySupplier = {
@@ -155,6 +156,11 @@ export default function Dashboard() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [inventory, setInventory] = useState<{ id: number; productoNombre?: string; cantidad?: number; stock?: number }[]>([]);
+  const [invoiceRange, setInvoiceRange] = useState<{ from: string; to: string; scope: 'branch' | 'all' }>({
+    from: '',
+    to: '',
+    scope: localStorage.getItem('adminBranchScope') !== 'sede' ? 'all' : 'branch',
+  });
 
   const load = () => {
     setLoading(true);
@@ -192,14 +198,20 @@ export default function Dashboard() {
   useEffect(() => {
     if (tab !== 'reports') return;
     const sedeId = localStorage.getItem('sedeId') || '1';
+    const params = new URLSearchParams();
+    const allSedes = localStorage.getItem('adminBranchScope') !== 'sede' && invoiceRange.scope === 'all';
+    if (!allSedes) params.set('sedeId', sedeId);
+    if (invoiceRange.from) params.set('from', invoiceRange.from);
+    if (invoiceRange.to) params.set('to', invoiceRange.to);
+    const q = params.toString();
     Promise.all([
-      api.get(`/api/invoices?sedeId=${sedeId}`).catch(() => ({ data: [] })),
+      api.get(`/api/invoices${q ? `?${q}` : ''}`).catch(() => ({ data: [] })),
       api.get(`/api/inventory?sedeId=${sedeId}`).catch(() => ({ data: [] })),
     ]).then(([rInv, rStock]) => {
       setInvoices(Array.isArray(rInv.data) ? rInv.data : []);
       setInventory(Array.isArray(rStock.data) ? rStock.data : []);
     });
-  }, [tab]);
+  }, [tab, invoiceRange.from, invoiceRange.to, invoiceRange.scope]);
 
   const openNewUser = () => {
     setEditingUser(null);
@@ -469,6 +481,7 @@ export default function Dashboard() {
     setProductForm({
       ...emptyProduct,
       tipoProductoId: types[0] ? String(types[0].id) : '',
+      sedeId: String(localStorage.getItem('sedeId') || branches[0]?.id || 1),
     });
     setProductModal(true);
     setError('');
@@ -484,6 +497,7 @@ export default function Dashboard() {
       valorVenta: String(p.valorVenta ?? p.precio ?? ''),
       tipoProductoId: p.tipoProductoId ? String(p.tipoProductoId) : '',
       proveedorId: p.proveedorId ? String(p.proveedorId) : '',
+      sedeId: String(localStorage.getItem('sedeId') || branches[0]?.id || 1),
     });
     setProductModal(true);
     setError('');
@@ -503,6 +517,15 @@ export default function Dashboard() {
         tipoProductoId: Number(productForm.tipoProductoId),
       };
       if (productForm.proveedorId) body.proveedorId = Number(productForm.proveedorId);
+      if (!editingProduct) {
+        const sedeId = Number(productForm.sedeId);
+        if (!sedeId) {
+          setError('Select the branch for this product');
+          setSaving(false);
+          return;
+        }
+        body.sedeId = sedeId;
+      }
       if (Number(productForm.valorVenta) < Number(productForm.valorCompra)) {
         setError('Sale price cannot be lower than purchase price');
         setSaving(false);
@@ -545,6 +568,15 @@ export default function Dashboard() {
     { key: 'types', label: `Types (${types.length})` },
     { key: 'reports', label: 'Reports' },
   ];
+
+  const invoicesInRange = invoices.filter((row) => {
+    if (!invoiceRange.from && !invoiceRange.to) return true;
+    const day = String(row.fechaCierre || row.fechaApertura || '').slice(0, 10);
+    if (!day) return false;
+    if (invoiceRange.from && day < invoiceRange.from) return false;
+    if (invoiceRange.to && day > invoiceRange.to) return false;
+    return true;
+  });
 
   const filteredProducts = products.filter((p) => {
     const q = productSearch.trim().toLowerCase();
@@ -827,7 +859,11 @@ export default function Dashboard() {
 
             {tab === 'reports' && (
               <div className="p-6 space-y-6">
-                <ReportsPanel sedeId={localStorage.getItem('sedeId') || '1'} allowAllBranches={isAllBranches} />
+                <ReportsPanel
+                  sedeId={localStorage.getItem('sedeId') || '1'}
+                  allowAllBranches={isAllBranches}
+                  onApply={setInvoiceRange}
+                />
                 <h3 className="font-display text-xl" style={{ color: '#f7f2e9' }}>Closed invoices</h3>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => {
@@ -841,7 +877,7 @@ export default function Dashboard() {
                       'Total (COP)',
                       'Closed at',
                     ];
-                    const rows = invoices.map((row) => [
+                    const rows = invoicesInRange.map((row) => [
                       row.pedidoId,
                       row.mesaNumero ?? '',
                       row.sedeNombre || '',
@@ -864,7 +900,7 @@ export default function Dashboard() {
                       'Total (COP)',
                       'Closed at',
                     ];
-                    const rows = invoices.map((row) => [
+                    const rows = invoicesInRange.map((row) => [
                       row.pedidoId,
                       row.mesaNumero ?? '',
                       row.sedeNombre || '',
@@ -877,13 +913,14 @@ export default function Dashboard() {
                     downloadExcel('invoices', headers, rows, 'Invoices');
                   }}>Invoices Excel</button>
                 </div>
-                {invoices.length === 0 ? (
-                  <p className="text-gray-400 text-sm">No invoices yet.</p>
+                {invoicesInRange.length === 0 ? (
+                  <p className="text-gray-400 text-sm">No invoices in this date range.</p>
                 ) : (
                   <table className="premium-table">
                     <thead>
                       <tr>
                         <th>Invoice</th>
+                        <th>Closed at</th>
                         <th>Table</th>
                         <th>Waiter</th>
                         <th>Cashier</th>
@@ -892,9 +929,10 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {invoices.map((row) => (
+                      {invoicesInRange.map((row) => (
                         <tr key={row.pedidoId}>
                           <td>#{row.pedidoId}</td>
+                          <td>{formatDateTime(row.fechaCierre)}</td>
                           <td>{row.mesaNumero ?? '—'}</td>
                           <td>{row.meseroNombre || '—'}</td>
                           <td>{row.cajeroNombre || row.pago?.cajeroNombre || '—'}</td>
@@ -1109,6 +1147,17 @@ export default function Dashboard() {
                 ))}
               </select>
             </label>
+            {!editingProduct && isAllBranches && (
+            <label className="block mb-4">
+              <span className="text-xs uppercase tracking-widest text-gray-600">Branch</span>
+              <select className={field} value={productForm.sedeId}
+                onChange={(e) => setProductForm({ ...productForm, sedeId: e.target.value })}>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{branchLabel(b.nombre)}</option>
+                ))}
+              </select>
+            </label>
+            )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setProductModal(false)} className="px-4 py-2 rounded-lg border text-sm">Cancel</button>
               <button type="button" disabled={saving} onClick={saveProduct}

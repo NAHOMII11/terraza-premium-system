@@ -8,8 +8,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,8 +46,9 @@ public class PaymentRepository {
                 """, cajeroId, pedidoId);
     }
 
-    public List<InvoiceDTO> listarFacturas(Long sedeId) {
-        return jdbc.query("""
+    public List<InvoiceDTO> listarFacturas(Long sedeId, LocalDate from, LocalDate to) {
+        List<Object> args = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("""
                 SELECT p.id AS pedido_id, p.sede_id, s.nombre AS sede_nombre, p.mesa_id,
                        me.numero AS mesa_numero, u.nombre AS mesero_nombre, p.estado, p.total,
                        p.fecha_apertura, p.fecha_cierre,
@@ -57,9 +61,22 @@ public class PaymentRepository {
                 LEFT JOIN pagos pg ON pg.id = (
                     SELECT px.id FROM pagos px WHERE px.pedido_id = p.id ORDER BY px.fecha_pago DESC LIMIT 1
                 )
-                WHERE p.sede_id = ? AND p.estado = 'CERRADO'
-                ORDER BY p.fecha_cierre DESC NULLS LAST, p.id DESC
-                """, (rs, rowNum) -> mapFactura(rs), sedeId);
+                WHERE p.estado = 'CERRADO'
+                """);
+        if (sedeId != null) {
+            sql.append(" AND p.sede_id = ?");
+            args.add(sedeId);
+        }
+        if (from != null) {
+            sql.append(" AND COALESCE(p.fecha_cierre, pg.fecha_pago)::date >= ?");
+            args.add(Date.valueOf(from));
+        }
+        if (to != null) {
+            sql.append(" AND COALESCE(p.fecha_cierre, pg.fecha_pago)::date <= ?");
+            args.add(Date.valueOf(to));
+        }
+        sql.append(" ORDER BY p.fecha_cierre DESC NULLS LAST, p.id DESC");
+        return jdbc.query(sql.toString(), (rs, rowNum) -> mapFactura(rs), args.toArray());
     }
 
     public Optional<InvoiceDTO> buscarFactura(Long pedidoId) {

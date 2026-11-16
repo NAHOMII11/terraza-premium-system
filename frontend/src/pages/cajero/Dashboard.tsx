@@ -61,6 +61,11 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceRange, setInvoiceRange] = useState<{ from: string; to: string; scope: 'branch' | 'all' }>({
+    from: '',
+    to: '',
+    scope: 'branch',
+  });
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [types, setTypes] = useState<ProductType[]>([]);
   const [typeModal, setTypeModal] = useState(false);
@@ -100,7 +105,7 @@ export default function Dashboard() {
     Promise.all([
       api.get(`/api/orders?sedeId=${sedeId}`).catch(() => ({ data: [] })),
       api.get(`/api/inventory?sedeId=${sedeId}`).catch(() => ({ data: [] })),
-      api.get(`/api/invoices?sedeId=${sedeId}`).catch(() => ({ data: [] })),
+      api.get(`/api/invoices?sedeId=${sedeId}${invoiceRange.from ? `&from=${invoiceRange.from}` : ''}${invoiceRange.to ? `&to=${invoiceRange.to}` : ''}`).catch(() => ({ data: [] })),
       api.get('/api/product-types').catch(() => ({ data: [] })),
     ])
       .then(([rO, rI, rInv, rT]) => {
@@ -114,7 +119,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
-  }, [sedeId]);
+  }, [sedeId, invoiceRange.from, invoiceRange.to]);
 
   useEffect(() => {
     if (!payModal) return;
@@ -238,6 +243,15 @@ export default function Dashboard() {
     return { bg: '#f5f5f5', color: '#616161', label: estado };
   };
 
+  const invoicesInRange = invoices.filter((row) => {
+    if (!invoiceRange.from && !invoiceRange.to) return true;
+    const day = String(row.fechaCierre || row.fechaApertura || '').slice(0, 10);
+    if (!day) return false;
+    if (invoiceRange.from && day < invoiceRange.from) return false;
+    if (invoiceRange.to && day > invoiceRange.to) return false;
+    return true;
+  });
+
   const exportInvoices = (kind: 'csv' | 'excel') => {
     const headers = [
       'Invoice number',
@@ -249,7 +263,7 @@ export default function Dashboard() {
       'Total (COP)',
       'Closed at',
     ];
-    const rows = invoices.map((row) => [
+    const rows = invoicesInRange.map((row) => [
       row.pedidoId,
       row.mesaNumero ?? '',
       row.sedeNombre || '',
@@ -392,7 +406,7 @@ export default function Dashboard() {
 
             {tab === 'reports' && (
               <div className="p-6 space-y-8">
-                <ReportsPanel sedeId={sedeId} allowAllBranches={false} />
+                <ReportsPanel sedeId={sedeId} allowAllBranches={false} onApply={setInvoiceRange} />
                 <div>
                   <h3 className="font-display text-xl mb-1" style={{ color: '#f7f2e9' }}>
                     Sales pending collection
@@ -411,13 +425,14 @@ export default function Dashboard() {
                   <h3 className="font-display text-xl mb-3" style={{ color: '#f7f2e9' }}>
                     Closed invoices
                   </h3>
-                  {invoices.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No invoices yet.</p>
+                  {invoicesInRange.length === 0 ? (
+                    <p className="text-gray-400 text-sm">No invoices in this date range.</p>
                   ) : (
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Invoice</th>
+                          <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Closed at</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Table</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Waiter</th>
                           <th className="text-left px-4 py-2 text-xs uppercase tracking-widest text-gray-500">Cashier</th>
@@ -426,9 +441,10 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {invoices.map((row) => (
+                        {invoicesInRange.map((row) => (
                           <tr key={row.pedidoId} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                             <td className="px-4 py-2">#{row.pedidoId}</td>
+                            <td className="px-4 py-2">{formatDateTime(row.fechaCierre)}</td>
                             <td className="px-4 py-2">Table {row.mesaNumero ?? '—'}</td>
                             <td className="px-4 py-2">{row.meseroNombre || '—'}</td>
                             <td className="px-4 py-2">{row.cajeroNombre || row.pago?.cajeroNombre || '—'}</td>

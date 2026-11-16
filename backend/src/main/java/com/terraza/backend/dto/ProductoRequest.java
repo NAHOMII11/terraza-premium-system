@@ -39,4 +39,6 @@ public class ProductoRequest {
     private Long tipoProductoId;
 
     private Long proveedorId;
+
+    private Long sedeId;
 }
