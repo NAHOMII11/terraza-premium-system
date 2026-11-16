@@ -28,11 +28,10 @@ function columnWidth(header: string, rows: (string | number | null | undefined)[
   return Math.min(420, Math.max(90, longest * 7 + 24));
 }
 
-export function downloadExcel(
-  filename: string,
+function excelSheet(
+  sheetName: string,
   headers: string[],
   rows: (string | number | null | undefined)[][],
-  sheetName = 'Report',
 ) {
   const xmlCell = (value: string | number | null | undefined) =>
     `<Cell><Data ss:Type="${typeof value === 'number' ? 'Number' : 'String'}">${xmlEscape(String(value ?? ''))}</Data></Cell>`;
@@ -40,6 +39,28 @@ export function downloadExcel(
   const headerRow = `<Row>${headers.map((h) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${xmlEscape(h)}</Data></Cell>`).join('')}</Row>`;
   const xmlRows = rows.map((row) => `<Row>${row.map(xmlCell).join('')}</Row>`).join('');
   const safeSheet = sheetName.replace(/[\\/*?:[\]]/g, ' ').slice(0, 31);
+  return `<Worksheet ss:Name="${safeSheet}">
+  <Table ss:DefaultRowHeight="18">${cols}${headerRow}${xmlRows}</Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+    <FreezePanes/>
+    <FrozenNoSplit/>
+    <SplitHorizontal>1</SplitHorizontal>
+    <TopRowBottomPane>1</TopRowBottomPane>
+  </WorksheetOptions>
+</Worksheet>`;
+}
+
+export function downloadExcel(
+  filename: string,
+  headers: string[],
+  rows: (string | number | null | undefined)[][],
+  sheetName = 'Report',
+  extraSheets: { name: string; headers: string[]; rows: (string | number | null | undefined)[][] }[] = [],
+) {
+  const sheets = [
+    excelSheet(sheetName, headers, rows),
+    ...extraSheets.map((s) => excelSheet(s.name, s.headers, s.rows)),
+  ].join('');
   const xml = `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
@@ -56,15 +77,7 @@ export function downloadExcel(
     <Font ss:FontName="Calibri" ss:Size="12" ss:Bold="1"/>
   </Style>
 </Styles>
-<Worksheet ss:Name="${safeSheet}">
-  <Table ss:DefaultRowHeight="18">${cols}${headerRow}${xmlRows}</Table>
-  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
-    <FreezePanes/>
-    <FrozenNoSplit/>
-    <SplitHorizontal>1</SplitHorizontal>
-    <TopRowBottomPane>1</TopRowBottomPane>
-  </WorksheetOptions>
-</Worksheet>
+${sheets}
 </Workbook>`;
   saveBlob(filename.endsWith('.xls') ? filename : `${filename}.xls`, new Blob([xml], { type: 'application/vnd.ms-excel' }));
 }
