@@ -4,7 +4,7 @@ import PageShell from '../components/PageShell';
 import AppLayout from '../components/AppLayout';
 import { useInactivityLogout } from '../hooks/useInactivityLogout';
 import type { InventarioItem, Producto } from '../types';
-import { currentBranch } from '../lib/format';
+import { branchLabel, currentBranch, isAdminAllBranches } from '../lib/format';
 
 function apiMessage(err: unknown, fallback: string) {
   const e = err as { response?: { data?: { message?: string; error?: string } } };
@@ -31,16 +31,41 @@ export default function Inventario() {
   const [addProductoId, setAddProductoId] = useState('');
   const [addStock, setAddStock] = useState('50');
   const [adding, setAdding] = useState(false);
+  const [addSedeId, setAddSedeId] = useState(Number(localStorage.getItem('sedeId') || '1'));
+  const [branchList, setBranchList] = useState<{ id: number; nombre: string }[]>([]);
   const sedeId = localStorage.getItem('sedeId') || '1';
+  const allBranches = isAdminAllBranches();
 
   const load = () => {
     setLoading(true);
-    Promise.all([
-      api.get(`/api/inventory?sedeId=${sedeId}`),
-      api.get('/api/products').catch(() => ({ data: [] })),
-    ])
-      .then(([rInv, rProd]) => {
-        setItems(Array.isArray(rInv.data) ? rInv.data : []);
+    api
+      .get('/api/branches')
+      .then((rB) => {
+        const list = (Array.isArray(rB.data) ? rB.data : []).filter(
+          (b: { id: number; nombre: string }) => !/cantina/i.test(b.nombre || '')
+        ) as { id: number; nombre: string }[];
+        setBranchList(list);
+        const targets = allBranches && list.length > 0 ? list : [{ id: Number(sedeId), nombre: currentBranch() }];
+        return Promise.all([
+          Promise.all(
+            targets.map((b) =>
+              api.get(`/api/inventory?sedeId=${b.id}`).then((r) => {
+                const rows = Array.isArray(r.data) ? r.data : [];
+                return rows.map((row: InventarioItem & { nombreProducto?: string; stock?: number }) => ({
+                  id: row.id,
+                  productoId: row.productoId,
+                  productoNombre: row.productoNombre || row.nombreProducto || '',
+                  cantidad: row.cantidad ?? row.stock ?? 0,
+                  sedeId: Number(row.sedeId || b.id),
+                }));
+              }).catch(() => [] as InventarioItem[])
+            )
+          ),
+          api.get('/api/products').catch(() => ({ data: [] })),
+        ]);
+      })
+      .then(([groups, rProd]) => {
+        setItems(groups.flat());
         setProductos(Array.isArray(rProd.data) ? rProd.data : []);
         setError('');
       })
@@ -52,13 +77,15 @@ export default function Inventario() {
 
   useEffect(() => {
     load();
-  }, [sedeId]);
+  }, [sedeId, allBranches]);
 
   const filtered = items.filter((i) =>
     (i.productoNombre || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const enInventario = new Set(items.map((i) => i.productoId));
+  const enInventario = new Set(
+    items.filter((i) => Number(i.sedeId) === Number(addSedeId)).map((i) => i.productoId)
+  );
   const disponibles = productos.filter((p) => !enInventario.has(p.id));
 
   const stockLevel = (qty: number) => {
@@ -83,7 +110,12 @@ export default function Inventario() {
       setItems((prev) =>
         prev.map((i) =>
           i.id === item.id
-            ? { ...i, ...data, cantidad: data.cantidad ?? data.stock ?? stock }
+            ? {
+                ...i,
+                cantidad: data.cantidad ?? data.stock ?? stock,
+                productoNombre: data.productoNombre || data.nombreProducto || i.productoNombre,
+                sedeId: Number(data.sedeId || i.sedeId),
+              }
             : i
         )
       );
@@ -115,7 +147,7 @@ export default function Inventario() {
     setMessage('');
     try {
       await api.post('/api/inventory', {
-        sedeId: Number(sedeId),
+        sedeId: Number(addSedeId),
         productoId: Number(addProductoId),
         stock,
       });
@@ -136,29 +168,8 @@ export default function Inventario() {
     <AppLayout
       eyebrow="Welcome to Terraza Premium"
       title="Inventory"
-      subtitle={`Branch · ${currentBranch()}`}
+      subtitle={allBranches ? 'All branches' : `Branch · ${currentBranch()}`}
     >
-          <div className="mb-8 flex flex-wrap justify-end items-end gap-4">
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-gray-500">
-              {filtered.length} product{filtered.length !== 1 ? 's' : ''}
-            </p>
-            {disponibles.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setAddOpen(true);
-                  setError('');
-                }}
-                className="px-4 py-2 rounded-lg text-sm"
-                style={{ background: '#926208', color: '#071525' }}
-              >
-                Add to inventory
-              </button>
-            )}
-          </div>
-          </div>
-
         <div className="mb-6">
           <input
             type="text"
@@ -190,95 +201,122 @@ export default function Inventario() {
 
         {loading ? (
           <p className="text-gray-400">Loading inventory...</p>
-        ) : filtered.length === 0 ? (
-          <div
-            className="text-center py-20 border-2 border-dashed rounded-xl"
-            style={{ borderColor: 'rgba(0,0,0,0.1)' }}
-          >
-            <p className="text-gray-400">No products in inventory.</p>
-          </div>
         ) : (
-          <div
-            className="rounded-xl border overflow-hidden"
-            style={{ background: '#10243d', borderColor: 'rgba(146, 98, 8,0.2)' }}
-          >
-            <table className="premium-table">
-              <thead>
-                <tr>
-                  <th className="text-left">Product</th>
-                  <th className="text-right">Stock</th>
-                  <th className="text-right hidden sm:table-cell">Status</th>
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((it) => {
-                  const level = stockLevel(it.cantidad);
-                  const value = draftStock[it.id] ?? String(it.cantidad);
-                  const dirty = Number(value) !== Number(it.cantidad);
-                  return (
-                    <tr key={it.id}>
-                      <td>
-                        <p style={{ color: '#f7f2e9' }}>{it.productoNombre}</p>
-                      </td>
-                      <td className="text-right">
-                        <input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={value}
-                          onChange={(e) =>
-                            setDraftStock((prev) => ({
-                              ...prev,
-                              [it.id]: e.target.value,
-                            }))
-                          }
-                          className="w-24 text-right px-2 py-1.5 rounded-lg border font-display text-lg"
-                          style={{
-                            background: '#071525',
-                            color: '#f7f2e9',
-                            borderColor: 'rgba(146, 98, 8,0.35)',
-                          }}
-                        />
-                        <span className="text-xs ml-1" style={{ color: '#a7afbc' }}>u.</span>
-                      </td>
-                      <td className="text-right hidden sm:table-cell">
-                        <span
-                          className="inline-block px-2.5 py-1 rounded-full text-xs font-medium"
-                          style={{ background: level.bg, color: level.color }}
-                        >
-                          {level.label}
-                        </span>
-                      </td>
-                      <td className="text-right">
-                        <button
-                          type="button"
-                          disabled={!dirty || savingId === it.id}
-                          onClick={() => saveStock(it)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
-                          style={{
-                            background: dirty ? '#926208' : 'transparent',
-                            color: dirty ? '#071525' : '#a7afbc',
-                            border: '1px solid rgba(146, 98, 8,0.35)',
-                          }}
-                        >
-                          {savingId === it.id ? 'Saving...' : 'Save stock'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-8">
+            {(allBranches ? branchList : [{ id: Number(sedeId), nombre: currentBranch() }]).map((group) => {
+              const rows = filtered.filter((i) => Number(i.sedeId) === Number(group.id));
+              return (
+                <section key={group.id}>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-display text-2xl" style={{ color: '#f7f2e9' }}>
+                      {branchLabel(group.nombre)}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddSedeId(group.id);
+                        setAddProductoId('');
+                        setAddOpen(true);
+                        setError('');
+                      }}
+                      className="px-4 py-2 rounded-lg text-sm"
+                      style={{ background: '#926208', color: '#071525' }}
+                    >
+                      Add to inventory
+                    </button>
+                  </div>
+                  {rows.length === 0 ? (
+                    <p className="text-sm text-gray-400">No products in inventory at this branch.</p>
+                  ) : (
+                    <div
+                      className="rounded-xl border overflow-hidden"
+                      style={{ background: '#10243d', borderColor: 'rgba(146, 98, 8,0.2)' }}
+                    >
+                      <table className="premium-table">
+                        <thead>
+                          <tr>
+                            <th className="text-left">Product</th>
+                            <th className="text-right">Stock</th>
+                            <th className="text-right hidden sm:table-cell">Status</th>
+                            <th className="text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((it) => {
+                            const level = stockLevel(it.cantidad);
+                            const value = draftStock[it.id] ?? String(it.cantidad);
+                            const dirty = Number(value) !== Number(it.cantidad);
+                            return (
+                              <tr key={it.id}>
+                                <td>
+                                  <p style={{ color: '#f7f2e9' }}>{it.productoNombre}</p>
+                                </td>
+                                <td className="text-right">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    value={value}
+                                    onChange={(e) =>
+                                      setDraftStock((prev) => ({
+                                        ...prev,
+                                        [it.id]: e.target.value,
+                                      }))
+                                    }
+                                    className="w-24 text-right px-2 py-1.5 rounded-lg border font-display text-lg"
+                                    style={{
+                                      background: '#071525',
+                                      color: '#f7f2e9',
+                                      borderColor: 'rgba(146, 98, 8,0.35)',
+                                    }}
+                                  />
+                                  <span className="text-xs ml-1" style={{ color: '#a7afbc' }}>u.</span>
+                                </td>
+                                <td className="text-right hidden sm:table-cell">
+                                  <span
+                                    className="inline-block px-2.5 py-1 rounded-full text-xs font-medium"
+                                    style={{ background: level.bg, color: level.color }}
+                                  >
+                                    {level.label}
+                                  </span>
+                                </td>
+                                <td className="text-right">
+                                  <button
+                                    type="button"
+                                    disabled={!dirty || savingId === it.id}
+                                    onClick={() => saveStock(it)}
+                                    className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+                                    style={{
+                                      background: dirty ? '#926208' : 'transparent',
+                                      color: dirty ? '#071525' : '#a7afbc',
+                                      border: '1px solid rgba(146, 98, 8,0.35)',
+                                    }}
+                                  >
+                                    {savingId === it.id ? 'Saving...' : 'Save stock'}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
 
-      {addOpen && disponibles.length > 0 && (
+      {addOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <h3 className="font-display text-2xl mb-2" style={{ color: '#f7f2e9' }}>
               Add to inventory
             </h3>
+            <p className="text-sm mb-3" style={{ color: '#c9a227' }}>
+              {branchLabel(branchList.find((b) => b.id === addSedeId)?.nombre) || currentBranch()}
+            </p>
             <label className="block mb-3">
               <span className="text-xs font-medium uppercase tracking-widest text-gray-600">
                 Product
@@ -289,11 +327,15 @@ export default function Inventario() {
                 className="mt-1 w-full px-3 py-2 rounded-lg border bg-white"
               >
                 <option value="">Select...</option>
-                {disponibles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
+                {disponibles.length === 0 ? (
+                  <option value="">No catalog products left for this branch</option>
+                ) : (
+                  disponibles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
             <label className="block mb-4">

@@ -108,7 +108,7 @@ export default function Dashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [productSearch, setProductSearch] = useState('');
+  const [listSearch, setListSearch] = useState('');
   const [types, setTypes] = useState<ProductType[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +124,7 @@ export default function Dashboard() {
   const goTab = (key: Tab) => {
     setMessage('');
     setError('');
+    setListSearch('');
     setTab(key);
   };
 
@@ -578,14 +579,21 @@ export default function Dashboard() {
     return true;
   });
 
-  const filteredProducts = products.filter((p) => {
-    const q = productSearch.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (p.nombre || '').toLowerCase().includes(q) ||
-      (p.codigo || '').toLowerCase().includes(q)
-    );
-  });
+  const qSearch = listSearch.trim().toLowerCase();
+  const matchSearch = (...vals: (string | number | undefined | null)[]) =>
+    !qSearch || vals.some((v) => String(v || '').toLowerCase().includes(qSearch));
+
+  const filteredUsers = usersOfBranch.filter((u) =>
+    matchSearch(u.nombre, u.email, u.rol, roleLabel(u.rol), u.sede, branchLabel(u.sede))
+  );
+  const filteredBranches = branches.filter((b) =>
+    matchSearch(b.nombre, branchLabel(b.nombre), b.direccion, b.ciudad, b.telefono)
+  );
+  const filteredProducts = products.filter((p) => matchSearch(p.nombre, p.codigo));
+  const filteredSuppliers = suppliers.filter((s) =>
+    matchSearch(s.nombre, s.nit, s.contacto, s.telefono, s.email)
+  );
+  const filteredTypes = types.filter((t) => matchSearch(t.nombre, t.descripcion));
 
   return (
     <PageShell>
@@ -639,6 +647,22 @@ export default function Dashboard() {
             </button>
           ))}
           </div>
+          {tab !== 'reports' && (
+            <input
+              type="text"
+              placeholder={
+                tab === 'users' ? 'Search user...' :
+                tab === 'branches' ? 'Search branch...' :
+                tab === 'suppliers' ? 'Search supplier...' :
+                tab === 'types' ? 'Search type...' :
+                'Search product...'
+              }
+              value={listSearch}
+              onChange={(e) => setListSearch(e.target.value)}
+              className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
+              style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+            />
+          )}
           {tab === 'users' && isAllBranches && (
             <button type="button" onClick={openNewUser}
               className="gold-btn">
@@ -651,23 +675,11 @@ export default function Dashboard() {
               Add branch
             </button>
           )}
-          {tab === 'products' && (
-            <div className="flex flex-wrap items-center gap-3 w-full justify-between">
-              <input
-                type="text"
-                placeholder="Search product..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
-                style={{ borderColor: 'rgba(0,0,0,0.1)' }}
-              />
-              {isAllBranches && (
-              <button type="button" onClick={openNewProduct}
-                className="gold-btn">
-                Add product
-              </button>
-              )}
-            </div>
+          {tab === 'products' && isAllBranches && (
+            <button type="button" onClick={openNewProduct}
+              className="gold-btn">
+              Add product
+            </button>
           )}
           {tab === 'suppliers' && isAllBranches && (
             <button type="button" onClick={openNewSupplier}
@@ -700,7 +712,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {usersOfBranch.map((u) => (
+                  {filteredUsers.map((u) => (
                     <tr key={u.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)', opacity: u.activo === false ? 0.7 : 1 }}>
                       <td className="px-6 py-4 font-medium">{u.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
@@ -746,7 +758,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {branches.map((b) => (
+                  {filteredBranches.map((b) => (
                     <tr key={b.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                       <td className="px-6 py-4 font-medium">{branchLabel(b.nombre)}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{branchLabel(b.direccion)}</td>
@@ -813,7 +825,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {suppliers.map((s) => (
+                  {filteredSuppliers.map((s) => (
                     <tr key={s.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                       <td className="px-6 py-4 font-medium">{s.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{s.nit || '—'}</td>
@@ -841,7 +853,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {types.map((t) => (
+                  {filteredTypes.map((t) => (
                     <tr key={t.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
                       <td className="px-6 py-4 font-medium">{t.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{t.descripcion || '—'}</td>
