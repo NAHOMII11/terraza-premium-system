@@ -10,7 +10,6 @@ import { downloadCsv, downloadExcel } from '../../lib/export';
 import AppLayout from '../../components/AppLayout';
 import InvoiceView, { type Invoice } from '../../components/InvoiceView';
 import ReportsPanel from '../../components/ReportsPanel';
-import QualityPanel from '../../components/QualityPanel';
 
 interface User {
   id: number;
@@ -59,7 +58,7 @@ interface Supplier {
   direccion?: string;
 }
 
-type Tab = 'users' | 'branches' | 'products' | 'suppliers' | 'types' | 'reports' | 'quality';
+type Tab = 'users' | 'branches' | 'products' | 'suppliers' | 'types' | 'reports';
 
 function apiMessage(err: unknown, fallback: string) {
   const e = err as { response?: { data?: { message?: string; error?: string } } };
@@ -185,6 +184,12 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (localStorage.getItem('adminBranchScope') === 'sede' && tab === 'branches') {
+      setTab('users');
+    }
+  }, [tab]);
+
+  useEffect(() => {
     if (tab !== 'reports') return;
     const sedeId = localStorage.getItem('sedeId') || '1';
     Promise.all([
@@ -200,7 +205,7 @@ export default function Dashboard() {
     setEditingUser(null);
     setUserForm({
       ...emptyUser,
-      sedeId: branches[0]?.id || 1,
+      sedeId: Number(localStorage.getItem('sedeId') || branches[0]?.id || 1),
     });
     setShowUserPassword(false);
     setUserModal(true);
@@ -522,14 +527,23 @@ export default function Dashboard() {
   const field =
     'mt-1 w-full px-3 py-2 rounded-lg border bg-white text-sm';
 
+  const isAllBranches = localStorage.getItem('adminBranchScope') !== 'sede';
+  const currentSedeId = Number(localStorage.getItem('sedeId') || '1');
+  const currentSedeName = branchLabel(localStorage.getItem('sedeNombre'));
+  const usersOfBranch = isAllBranches
+    ? users
+    : users.filter((u) => {
+        if (u.sedeId != null) return Number(u.sedeId) === currentSedeId;
+        return branchLabel(u.sede) === currentSedeName;
+      });
+
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'users', label: `Users (${users.length})` },
-    { key: 'branches', label: `Branches (${branches.length})` },
+    { key: 'users', label: `Users (${usersOfBranch.length})` },
+    ...(isAllBranches ? [{ key: 'branches' as Tab, label: `Branches (${branches.length})` }] : []),
     { key: 'products', label: `Products (${products.length})` },
     { key: 'suppliers', label: `Suppliers (${suppliers.length})` },
     { key: 'types', label: `Types (${types.length})` },
     { key: 'reports', label: 'Reports' },
-    { key: 'quality', label: 'Quality' },
   ];
 
   const filteredProducts = products.filter((p) => {
@@ -557,7 +571,7 @@ export default function Dashboard() {
         </>
       }
       metrics={[
-        { label: 'Users', value: users.length },
+        { label: 'Users', value: usersOfBranch.length },
         { label: 'Branches', value: branches.length },
         { label: 'Products', value: products.length },
         { label: 'Suppliers', value: suppliers.length },
@@ -593,13 +607,13 @@ export default function Dashboard() {
             </button>
           ))}
           </div>
-          {tab === 'users' && (
+          {tab === 'users' && isAllBranches && (
             <button type="button" onClick={openNewUser}
               className="gold-btn">
               Add user
             </button>
           )}
-          {tab === 'branches' && (
+          {tab === 'branches' && isAllBranches && (
             <button type="button" onClick={openNewBranch}
               className="gold-btn">
               Add branch
@@ -615,19 +629,21 @@ export default function Dashboard() {
                 className="w-full md:w-80 px-4 py-2.5 rounded-lg border bg-white focus:outline-none focus:ring-2"
                 style={{ borderColor: 'rgba(0,0,0,0.1)' }}
               />
+              {isAllBranches && (
               <button type="button" onClick={openNewProduct}
                 className="gold-btn">
                 Add product
               </button>
+              )}
             </div>
           )}
-          {tab === 'suppliers' && (
+          {tab === 'suppliers' && isAllBranches && (
             <button type="button" onClick={openNewSupplier}
               className="gold-btn">
               Add supplier
             </button>
           )}
-          {tab === 'types' && (
+          {tab === 'types' && isAllBranches && (
             <button type="button" onClick={() => { setEditingType(null); setTypeForm({ nombre: '', descripcion: '' }); setTypeModal(true); setError(''); }}
               className="gold-btn">
               Add type
@@ -652,7 +668,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => (
+                  {usersOfBranch.map((u) => (
                     <tr key={u.id} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.05)', opacity: u.activo === false ? 0.7 : 1 }}>
                       <td className="px-6 py-4 font-medium">{u.nombre}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
@@ -809,11 +825,9 @@ export default function Dashboard() {
               </table>
             )}
 
-            {tab === 'quality' && <QualityPanel />}
-
             {tab === 'reports' && (
               <div className="p-6 space-y-6">
-                <ReportsPanel sedeId={localStorage.getItem('sedeId') || '1'} allowAllBranches />
+                <ReportsPanel sedeId={localStorage.getItem('sedeId') || '1'} allowAllBranches={isAllBranches} />
                 <h3 className="font-display text-xl" style={{ color: '#f7f2e9' }}>Closed invoices</h3>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className="px-3 py-1.5 rounded-lg border text-sm" onClick={() => {
@@ -967,6 +981,7 @@ export default function Dashboard() {
                 <option value={3}>Waiter</option>
               </select>
             </label>
+            {isAllBranches && (
             <label className="block mb-4">
               <span className="text-xs uppercase tracking-widest text-gray-600">Branch</span>
               <select className={field} value={userForm.sedeId}
@@ -976,6 +991,7 @@ export default function Dashboard() {
                 ))}
               </select>
             </label>
+            )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setUserModal(false)} className="px-4 py-2 rounded-lg border text-sm">Cancel</button>
               <button type="button" disabled={saving} onClick={saveUser}

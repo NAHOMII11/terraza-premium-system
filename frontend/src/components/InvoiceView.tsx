@@ -167,11 +167,6 @@ export default function InvoiceView({
         <p className="px-7 pb-2 text-center italic text-base" style={{ color: '#926208' }}>
           The best moments are shared here
         </p>
-        {invoice.hashSha256 && (
-          <p className="px-7 pb-2 text-center text-[11px] break-all" style={{ color: '#a7afbc' }}>
-            SHA-256 {invoice.hashSha256}
-          </p>
-        )}
         <p className="px-7 pb-4 text-center text-xs uppercase tracking-widest" style={{ color: '#a7afbc' }}>
           On-screen invoice · Terraza Premium
         </p>

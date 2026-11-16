@@ -13,6 +13,7 @@ export default function BranchSwitcher() {
   const canSwitch = rol === 'ADMIN';
   const [branches, setBranches] = useState<Branch[]>([]);
   const [sedeId, setSedeId] = useState(localStorage.getItem('sedeId') || '1');
+  const [scope, setScope] = useState(localStorage.getItem('adminBranchScope') || 'all');
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -66,13 +67,25 @@ export default function BranchSwitcher() {
     );
   }
 
-  const selected = branchLabel(branches.find((b) => String(b.id) === sedeId)?.nombre) || currentBranch();
+  const selected =
+    scope !== 'sede'
+      ? 'All branches'
+      : branchLabel(branches.find((b) => String(b.id) === sedeId)?.nombre) || currentBranch();
+
+  const applyAll = () => {
+    localStorage.setItem('adminBranchScope', 'all');
+    setScope('all');
+    setOpen(false);
+    window.location.reload();
+  };
 
   const applyBranch = (id: string) => {
     const branch = branches.find((b) => String(b.id) === id);
+    localStorage.setItem('adminBranchScope', 'sede');
     localStorage.setItem('sedeId', id);
     if (branch?.nombre) localStorage.setItem('sedeNombre', branch.nombre);
     setSedeId(id);
+    setScope('sede');
     setOpen(false);
     window.location.reload();
   };
@@ -85,11 +98,18 @@ export default function BranchSwitcher() {
       </button>
       {open && (
         <div className="branch-switch-menu">
+          <button
+            type="button"
+            className={scope !== 'sede' ? 'is-active' : ''}
+            onClick={applyAll}
+          >
+            All branches
+          </button>
           {branches.map((b) => (
             <button
               key={b.id}
               type="button"
-              className={String(b.id) === sedeId ? 'is-active' : ''}
+              className={scope === 'sede' && String(b.id) === sedeId ? 'is-active' : ''}
               onClick={() => applyBranch(String(b.id))}
             >
               {branchLabel(b.nombre)}

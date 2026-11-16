@@ -450,8 +450,8 @@ export default function Dashboard() {
       {payModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <h3 className="font-display text-2xl" style={{ color: 'var(--bar-dark)' }}>
+            <div className="flex items-start justify-between gap-3 mb-4 px-3 py-2 rounded-lg" style={{ background: '#071525' }}>
+              <h3 className="font-display text-2xl" style={{ color: '#f7f2e9' }}>
                 Register payment
               </h3>
               <p className="text-sm font-medium" style={{ color: payLeft <= 15 ? '#b42318' : '#926208' }}>
@@ -459,34 +459,34 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="mb-4 p-4 rounded-lg" style={{ background: 'var(--bar-cream)' }}>
-              <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">Order</p>
-              <p className="font-medium">#{selectedOrder.id} · Table {selectedOrder.mesaId}</p>
-              <p className="text-xs uppercase tracking-widest text-gray-500 mt-3 mb-2">Products to pay</p>
+            <div className="mb-4 p-4 rounded-lg" style={{ background: 'var(--bar-cream)', color: '#111111' }}>
+              <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#111111' }}>Order</p>
+              <p className="font-medium" style={{ color: '#111111' }}>#{selectedOrder.id} · Table {selectedOrder.mesaId}</p>
+              <p className="text-xs uppercase tracking-widest mt-3 mb-2" style={{ color: '#111111' }}>Products to pay</p>
               {payLines.length === 0 ? (
-                <p className="text-sm text-gray-500">No products on this order.</p>
+                <p className="text-sm" style={{ color: '#111111' }}>No products on this order.</p>
               ) : (
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" style={{ color: '#111111' }}>
                   <thead>
                     <tr>
-                      <th className="text-left pb-1 text-xs uppercase tracking-widest text-gray-500">Product</th>
-                      <th className="text-right pb-1 text-xs uppercase tracking-widest text-gray-500">Qty</th>
-                      <th className="text-right pb-1 text-xs uppercase tracking-widest text-gray-500">Subtotal</th>
+                      <th className="text-left pb-1 text-xs uppercase tracking-widest" style={{ color: '#111111' }}>Product</th>
+                      <th className="text-right pb-1 text-xs uppercase tracking-widest" style={{ color: '#111111' }}>Qty</th>
+                      <th className="text-right pb-1 text-xs uppercase tracking-widest" style={{ color: '#111111' }}>Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payLines.map((line, index) => (
                       <tr key={`${line.productoNombre || 'item'}-${index}`}>
-                        <td className="py-1 pr-2">{line.productoNombre || 'Product'}</td>
-                        <td className="py-1 text-right">{line.cantidad}</td>
-                        <td className="py-1 text-right">{formatMoney(line.subtotal)}</td>
+                        <td className="py-1 pr-2" style={{ color: '#111111' }}>{line.productoNombre || 'Product'}</td>
+                        <td className="py-1 text-right" style={{ color: '#111111' }}>{line.cantidad}</td>
+                        <td className="py-1 text-right" style={{ color: '#111111' }}>{formatMoney(line.subtotal)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
-              <p className="text-xs uppercase tracking-widest text-gray-500 mt-3 mb-1">Total</p>
-              <p className="font-display text-3xl" style={{ color: 'var(--bar-amber)' }}>
+              <p className="text-xs uppercase tracking-widest mt-3 mb-1" style={{ color: '#111111' }}>Total</p>
+              <p className="font-display text-3xl" style={{ color: '#111111' }}>
                 {formatMoney(selectedOrder.total)}
               </p>
             </div>

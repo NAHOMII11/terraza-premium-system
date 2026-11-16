@@ -59,12 +59,24 @@ export default function ReportsPanel({
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [scope, setScope] = useState<'branch' | 'all'>(allowAllBranches ? 'all' : 'branch');
+  const [appliedFrom, setAppliedFrom] = useState('');
+  const [appliedTo, setAppliedTo] = useState('');
+  const [appliedScope, setAppliedScope] = useState<'branch' | 'all'>(allowAllBranches ? 'all' : 'branch');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
 
   const query = () => {
-    const sede = allowAllBranches && scope === 'all' ? undefined : sedeId;
-    return qs({ sedeId: sede, from, to });
+    const sede = allowAllBranches && appliedScope === 'all' ? undefined : sedeId;
+    return qs({ sedeId: sede, from: appliedFrom, to: appliedTo });
+  };
+
+  const applyFilter = () => {
+    setAppliedFrom(from);
+    setAppliedTo(to);
+    setAppliedScope(scope);
+    const sedeLabel = allowAllBranches && scope === 'all' ? 'all branches' : 'current branch';
+    const range = from || to ? `${from || '…'} → ${to || '…'}` : 'all dates';
+    setNote(`Filter applied: ${range} · ${sedeLabel}`);
   };
 
   const exportSales = async (kind: 'csv' | 'excel') => {
@@ -149,6 +161,14 @@ export default function ReportsPanel({
             </select>
           </label>
         )}
+        <button
+          type="button"
+          onClick={applyFilter}
+          className="px-4 py-2 rounded-lg text-sm font-medium"
+          style={{ background: '#926208', color: '#071525' }}
+        >
+          Apply
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
